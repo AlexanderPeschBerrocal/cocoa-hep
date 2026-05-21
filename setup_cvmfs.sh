@@ -1,46 +1,38 @@
 export CURRENTDIR=$(pwd)
-export LCG_109_HOME=/cvmfs/sft.cern.ch/lcg/releases/LCG_109
-export GCC_HOME=${LCG_109_HOME}/gcc/14.3.0/x86_64-el9
-export TBB_HOME=${LCG_109_HOME}/tbb/2022.2.0/x86_64-el9-gcc13-opt
-export ROOTSYS=${LCG_109_HOME}/ROOT/6.38.00/x86_64-el9-gcc13-opt
+
+export LCG_109_VIEW=/cvmfs/sft.cern.ch/lcg/views/LCG_109/x86_64-el9-gcc13-opt
+source ${LCG_109_VIEW}/setup.sh
+
+# Keep the legacy variables used by COCOA's CMake files while letting the
+# LCG view provide the full, internally consistent runtime environment.
+export GCC_HOME=/cvmfs/sft.cern.ch/lcg/releases/LCG_109/gcc/14.3.0/x86_64-el9
+export PATH=${GCC_HOME}/bin:${PATH}
+export LD_LIBRARY_PATH=${GCC_HOME}/lib64:${GCC_HOME}/lib:${LD_LIBRARY_PATH}
+export CC=${GCC_HOME}/bin/gcc
+export CXX=${GCC_HOME}/bin/g++
 export ROOT_DIR=${ROOTSYS}/cmake
-export GEANT4_HOME=${LCG_109_HOME}/Geant4/11.4.0/x86_64-el9-gcc13-opt
+export GEANT4_HOME=${LCG_109_VIEW}
 export GEANT4_DIR=${GEANT4_HOME}/lib64/cmake/Geant4
-export CLHEP_HOME=${LCG_109_HOME}/clhep/2.4.7.2/x86_64-el9-gcc13-opt
+export CLHEP_HOME=${LCG_109_VIEW}
 export CLHEP_DIR=${CLHEP_HOME}
-export VECGEOM_HOME=${LCG_109_HOME}/VecGeom/2.0.0/x86_64-el9-gcc13-opt
+export VECGEOM_HOME=${LCG_109_VIEW}
 export VECGEOM_DIR=${VECGEOM_HOME}/lib64/cmake/VecGeom
-export XERCESC_HOME=${LCG_109_HOME}/XercesC/3.3.0/x86_64-el9-gcc13-opt
+export XERCESC_HOME=${LCG_109_VIEW}
 export XERCESC_DIR=${XERCESC_HOME}
-export VC_HOME=${LCG_109_HOME}/Vc/1.4.5/x86_64-el9-gcc13-opt
+export VC_HOME=${LCG_109_VIEW}
 export VC_DIR=${VC_HOME}/lib/cmake/Vc
-export VDT_HOME=${LCG_109_HOME}/vdt/0.4.4/x86_64-el9-gcc13-opt
+export VDT_HOME=${LCG_109_VIEW}
 export VDT_INCLUDE_DIR=${VDT_HOME}/include
 export VDT_LIBRARY=${VDT_HOME}/lib/libvdt.so
+export TBB_HOME=${LCG_109_VIEW}
 export TBB_DIR=${TBB_HOME}/lib64/cmake/TBB
-export HEPMC_HOME=${LCG_109_HOME}/HepMC/2.06.11/x86_64-el9-gcc13-opt
-export JSONCPP_HOME=${LCG_109_HOME}/jsoncpp/1.9.3/x86_64-el9-gcc13-opt
-export PYTHIA8_HOME=${LCG_109_HOME}/MCGenerators/pythia8/317/x86_64-el9-gcc13-opt
-export FASTJET_HOME=${LCG_109_HOME}/fastjet/3.5.0/x86_64-el9-gcc13-opt
-export Qt5_DIR=${LCG_109_HOME}/qt5/5.15.15/x86_64-el9-gcc13-opt/lib/cmake/Qt5
-export PATH=${GEANT4_HOME}/bin:${ROOTSYS}/bin:${PYTHIA8_HOME}/bin:${FASTJET_HOME}/bin:${PATH}
-export ROOT_LIBRARY_DIR=$(root-config --libdir)
-export LD_LIBRARY_PATH=${GCC_HOME}/lib64:${TBB_HOME}/lib64:${GEANT4_HOME}/lib64:${ROOT_LIBRARY_DIR}:${CLHEP_HOME}/lib:${VECGEOM_HOME}/lib64:${XERCESC_HOME}/lib:${VC_HOME}/lib:${VDT_HOME}/lib:${HEPMC_HOME}/lib:${JSONCPP_HOME}/lib64:${PYTHIA8_HOME}/lib:${FASTJET_HOME}/lib:${QT5_DIR}/../..:${LD_LIBRARY_PATH}
-export CMAKE_PREFIX_PATH=${ROOTSYS}:${GEANT4_HOME}:${CLHEP_HOME}:${VECGEOM_HOME}:${XERCESC_HOME}:${VC_HOME}:${VDT_HOME}:${TBB_HOME}:${Qt5_DIR}/..:${HEPMC_HOME}:${JSONCPP_HOME}:${PYTHIA8_HOME}:${FASTJET_HOME}:${CMAKE_PREFIX_PATH}
-if [ -d /cvmfs/geant4.cern.ch/share/data ]; then
-  export G4NEUTRONHPDATA=/cvmfs/geant4.cern.ch/share/data/G4NDL4.6
-  export G4LEDATA=/cvmfs/geant4.cern.ch/share/data/G4EMLOW7.9.1
-  export G4LEVELGAMMADATA=/cvmfs/geant4.cern.ch/share/data/PhotonEvaporation5.5
-  export G4RADIOACTIVEDATA=/cvmfs/geant4.cern.ch/share/data/RadioactiveDecay5.4
-  export G4PARTICLEXSDATA=/cvmfs/geant4.cern.ch/share/data/G4PARTICLEXS2.1
-  export G4PIIDATA=/cvmfs/geant4.cern.ch/share/data/G4PII1.3
-  export G4REALSURFACEDATA=/cvmfs/geant4.cern.ch/share/data/RealSurface2.1.1
-  export G4SAIDXSDATA=/cvmfs/geant4.cern.ch/share/data/G4SAIDDATA2.0
-  export G4ABLADATA=/cvmfs/geant4.cern.ch/share/data/G4ABLA3.1
-  export G4INCLDATA=/cvmfs/geant4.cern.ch/share/data/G4INCL1.0
-  export G4ENSDFSTATEDATA=/cvmfs/geant4.cern.ch/share/data/G4ENSDFSTATE2.2
-fi
-export PYTHIA8DATA=$PYTHIA8_HOME/share/Pythia8/xmldoc
-export CC=${CC:-${GCC_HOME}/bin/gcc}
-export CXX=${CXX:-${GCC_HOME}/bin/g++}
+export HEPMC_HOME=${LCG_109_VIEW}
+export JSONCPP_HOME=${LCG_109_VIEW}
+export PYTHIA8_HOME=${PYTHIA8:-${LCG_109_VIEW}}
+export FASTJET_HOME=$(fastjet-config --prefix)
+export Qt5_DIR=${LCG_109_VIEW}/lib/cmake/Qt5
+
+eval "$(geant4-config --sh)"
+export PYTHIA8DATA=${PYTHIA8_HOME}/share/Pythia8/xmldoc
+
 cd $CURRENTDIR

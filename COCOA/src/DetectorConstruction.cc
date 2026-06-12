@@ -55,6 +55,11 @@
 #include "G4RunManager.hh"
 #include "G4Cons.hh"
 
+#include "GeometryMaterialWriter.hh"
+#include "G4GDMLParser.hh"
+
+#include <string>
+
 // G4ThreadLocal
 // G4GlobalMagFieldMessenger* DetectorConstruction::fMagFieldMessenger = nullptr;
 
@@ -69,6 +74,48 @@ long double EtaToTheta(long double eta) {
 long double GetPhi(long double px, long double py) {
 	long double phi = atan2( py, px );
 	return phi;    
+}
+
+std::string DetectorConstruction::MakeGeometryMaterialOutputPath() const
+{
+  if (!config_json_var.Geometry_material_map_path.empty())
+  {
+    return config_json_var.Geometry_material_map_path;
+  }
+
+  std::string out = config_json_var.Output_file_path;
+
+  const std::string root_suffix = ".root";
+  if (out.size() >= root_suffix.size() &&
+      out.compare(out.size() - root_suffix.size(),
+                  root_suffix.size(),
+                  root_suffix) == 0)
+  {
+    out.erase(out.size() - root_suffix.size());
+  }
+
+  return out + ".geometry.json";
+}
+
+std::string DetectorConstruction::MakeGDMLOutputPath() const
+{
+  if (!config_json_var.Geometry_gdml_path.empty())
+  {
+    return config_json_var.Geometry_gdml_path;
+  }
+
+  std::string out = config_json_var.Output_file_path;
+
+  const std::string root_suffix = ".root";
+  if (out.size() >= root_suffix.size() &&
+      out.compare(out.size() - root_suffix.size(),
+                  root_suffix.size(),
+                  root_suffix) == 0)
+  {
+    out.erase(out.size() - root_suffix.size());
+  }
+
+  return out + ".geometry.gdml";
 }
 
 DetectorConstruction::DetectorConstruction(Geometry_definition Geometry): G4VUserDetectorConstruction()
@@ -135,6 +182,20 @@ G4VPhysicalVolume *DetectorConstruction::Construct()
 
 	CalorimeterConstruction Calorimeter(expHallLV, fCheckOverlaps, geometry);
 	InnerConstruction       InnerDetector(expHallLV, defaultMaterial, iron, elSi, fCheckOverlaps);
+
+	if (config_json_var.Save_geometry_material_map)
+	{
+	GeometryMaterialWriter::WriteGeometryMaterialJson(
+		expHall,
+		MakeGeometryMaterialOutputPath());
+	}
+
+	if (config_json_var.Save_geometry_gdml)
+	{
+		G4GDMLParser parser;
+		parser.Write(MakeGDMLOutputPath(), expHall, false);
+	}
+
 	return expHall;
 }
 

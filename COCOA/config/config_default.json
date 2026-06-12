@@ -1,5 +1,12 @@
 {
     "Output_file_path":"./cocoa_output_default.root",
+
+    "Save_geometry_material_map": false,
+    "Geometry_material_map_path": "",
+
+    "Save_geometry_gdml": false,
+    "Geometry_gdml_path": "",
+
     "Macro_file_path":"macro/Pythia8/ttbar.in",
     "Type_of_running": "Standard",
     "Save_truth_particle_graph": true,

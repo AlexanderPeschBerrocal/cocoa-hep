@@ -39,6 +39,8 @@
 #include "CalorimeterConstruction.hh"
 #include "InnerConstruction.hh"
 
+#include <string>
+
 class G4VPhysicalVolume;
 class G4GlobalMagFieldMessenger;
 
@@ -64,6 +66,10 @@ public:
 
 private:
 	// G4VPhysicalVolume*   fGapPV;      // the gap physical volume
+
+	std::string MakeGeometryMaterialOutputPath() const;
+	std::string MakeGDMLOutputPath() const;
+
 	Geometry_definition geometry;
 	G4bool fCheckOverlaps; // option to activate checking of volumes overlaps
 };

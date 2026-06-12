@@ -58,6 +58,7 @@ void fill_var();
     };
     std::vector < FullTrajectoryInfo> fAllTrajectoryInfo;
     std::vector < FullTrajectoryInfo> fAllConvElectrons;
+    std::vector < FullTrajectoryInfo> fAllNuclearInteractions;
 	std::vector <int>	particle_to_track;
 	std::vector <fastjet::PseudoJet> jets_objects;
     void SetParticleDepEnergy( const std::vector<float> &_particle_dep_energies);
@@ -82,7 +83,12 @@ private:
     std::vector<float>  conv_el_prod_x;
     std::vector<float>  conv_el_prod_y;
     std::vector<float>  conv_el_prod_z;
-    
+
+    std::vector<int>   nuc_int_primary_track_idx;
+    std::vector<float> nuc_int_prod_x;
+    std::vector<float> nuc_int_prod_y;
+    std::vector<float> nuc_int_prod_z;
+
     std::vector<float> caloExtrapolEta;     // pseudorapidity of the same-pdgid daughter track of maximum kinetic energy in the calorimeter
     std::vector<float> caloExtrapolPhi;     // phi of the same-pdgid daughter track of maximum kinetic energy in the calorimeter
     std::vector<float> idExtrapolEta;     // pseudorapidity of the same-pdgid daughter track of maximum kinetic energy in the outermost id layer

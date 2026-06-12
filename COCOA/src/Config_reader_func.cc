@@ -11,6 +11,13 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     config_doc >> configs;
     
     config_var.Output_file_path = configs["Output_file_path"].asString();
+
+    config_var.Save_geometry_material_map = configs.get("Save_geometry_material_map", true).asBool();
+    config_var.Geometry_material_map_path = configs.get("Geometry_material_map_path", "").asString();
+
+    config_var.Save_geometry_gdml = configs.get("Save_geometry_gdml", true).asBool();
+    config_var.Geometry_gdml_path = configs.get("Geometry_gdml_path", "").asString();
+
     config_var.Type_of_running = configs["Type_of_running"].asString();
     config_var.Macro_file_path = configs["Macro_file_path"].asString();
     config_var.Save_truth_particle_graph = configs["Save_truth_particle_graph"].asBool();

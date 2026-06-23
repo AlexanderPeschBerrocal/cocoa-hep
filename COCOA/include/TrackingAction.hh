@@ -46,7 +46,11 @@ public:
 private:
     bool IsPrimaryPhotonDaughter(const G4Track* aTrack) const;
     bool IsInnerDetectorTrack(const G4Track* aTrack) const;
-    bool IsPrimaryHadronDaughter(const G4Track* aTrack) const;
+
+    // bool IsPrimaryHadronDaughter(const G4Track* aTrack) const;
+
+	bool IsNuclearInteractionDaughter(const G4Track* aTrack) const;
+	int FindPrimaryAncestorIndex(const G4Track* aTrack) const;
 };
 
 #endif

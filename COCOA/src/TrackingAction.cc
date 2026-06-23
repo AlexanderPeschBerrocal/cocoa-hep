@@ -46,6 +46,12 @@
 #include "DetectorConstruction.hh"
 using namespace std;
 
+#include "G4VProcess.hh"
+#include "G4ProcessType.hh"
+
+#include <algorithm>
+#include <string>
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 TrackingAction::TrackingAction()
 	: G4UserTrackingAction()
@@ -180,9 +186,10 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 	    }
 
 	    trajectories.fAllConvElectrons.push_back( conv_el_tr );
-		}
+	}
 
 	// NEW: capture nuclear interaction vertices similarly
+	/*
     if (IsPrimaryHadronDaughter(aTrack) && IsInnerDetectorTrack(aTrack)) {
     	FullTrajectoryInfo nuc_tr;
 		nuc_tr.is_conversion_track = false;
@@ -215,7 +222,47 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
         }
 	    }
 
-    trajectories.fAllNuclearInteractions.push_back(nuc_tr);
+    	trajectories.fAllNuclearInteractions.push_back(nuc_tr);
+	}*/
+
+	// capture nuclear interaction daughters
+	if (IsNuclearInteractionDaughter(aTrack) && IsInnerDetectorTrack(aTrack)) {
+		FullTrajectoryInfo nuc_tr;
+
+		nuc_tr.is_conversion_track = false;
+		nuc_tr.fPDGCharge = aTrack->GetDynamicParticle()->GetCharge();
+		nuc_tr.fMomentumDir = aTrack->GetDynamicParticle()->GetMomentumDirection();
+		nuc_tr.fEnergy = aTrack->GetDynamicParticle()->GetTotalEnergy();
+		nuc_tr.fMass = aTrack->GetDynamicParticle()->GetMass();
+
+		nuc_tr.fTrackID = aTrack->GetTrackID();
+		nuc_tr.fPDGCode = aTrack->GetDefinition()->GetPDGEncoding();
+		nuc_tr.fMomentum = aTrack->GetMomentum();
+
+		nuc_tr.caloExtrapolMaxEkin = 0.0;
+		nuc_tr.caloExtrapolEta = nuc_tr.fMomentum.getEta();
+		nuc_tr.caloExtrapolPhi = GetPhi(nuc_tr.fMomentum.x(), nuc_tr.fMomentum.y());
+
+		nuc_tr.idExtrapolMaxEkin = nuc_tr.caloExtrapolMaxEkin;
+		nuc_tr.idExtrapolEta = nuc_tr.caloExtrapolEta;
+		nuc_tr.idExtrapolPhi = nuc_tr.caloExtrapolPhi;
+
+		nuc_tr.fVertexPosition = aTrack->GetVertexPosition();
+		nuc_tr.fGlobalTime = aTrack->GetGlobalTime();
+
+		nuc_tr.vTrackMomentumDir.push_back(aTrack->GetMomentum());
+		nuc_tr.vParentID.push_back(aTrack->GetParentID());
+		nuc_tr.vTrackID.push_back(aTrack->GetTrackID());
+		nuc_tr.vTrackPos.push_back(aTrack->GetPosition());
+		nuc_tr.vTrackTime.push_back(aTrack->GetGlobalTime());
+		nuc_tr.vTrackPDGID.push_back(aTrack->GetDefinition()->GetPDGEncoding());
+
+		nuc_tr.fParentID = FindPrimaryAncestorIndex(aTrack);
+
+		const G4VProcess* creator = aTrack->GetCreatorProcess();
+		nuc_tr.fprocessId = creator ? creator->GetProcessSubType() : -1;
+
+		trajectories.fAllNuclearInteractions.push_back(nuc_tr);
 	}
 }
 
@@ -251,7 +298,7 @@ bool TrackingAction::IsInnerDetectorTrack(const G4Track* aTrack) const {
     return logicalVolumeName.substr( 0, 5 ) == "inner";
     
 }
-
+/*
 bool TrackingAction::IsPrimaryHadronDaughter(const G4Track* aTrack) const {
   G4int parentID = aTrack->GetParentID();
   if (parentID == 0) return false;
@@ -269,6 +316,55 @@ bool TrackingAction::IsPrimaryHadronDaughter(const G4Track* aTrack) const {
     }
   }
   return false;
+}
+*/
+
+bool TrackingAction::IsNuclearInteractionDaughter(const G4Track* aTrack) const {
+    if (!aTrack) return false;
+    if (aTrack->GetParentID() == 0) return false;
+    if (!IsInnerDetectorTrack(aTrack)) return false;
+
+    const G4VProcess* creator = aTrack->GetCreatorProcess();
+    if (!creator) return false;
+
+    const G4String& processName = creator->GetProcessName();
+
+    // Require a Geant4 hadronic/nuclear creation process.
+    // This rejects decays and ordinary EM processes.
+    if (creator->GetProcessType() != fHadronic) return false;
+
+    // Strict inelastic/capture definition.
+    // This accepts typical names such as pi+Inelastic, pi-Inelastic,
+    // kaon+Inelastic, protonInelastic, neutronInelastic, nCapture, nFission.
+    const bool isNuclearProcess =
+        processName.find("Inelastic") != std::string::npos ||
+        processName == "nCapture" ||
+        processName == "nFission";
+
+    return isNuclearProcess;
+}
+
+int TrackingAction::FindPrimaryAncestorIndex(const G4Track* aTrack) const {
+    if (!aTrack) return -1;
+
+    const G4int parentID = aTrack->GetParentID();
+    const auto& primaries = Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo;
+
+    for (size_t ip = 0; ip < primaries.size(); ++ip) {
+        const FullTrajectoryInfo& primary = primaries[ip];
+
+        if (primary.fTrackID == parentID) {
+            return static_cast<int>(ip);
+        }
+
+        if (std::find(primary.vTrackID.begin(),
+                      primary.vTrackID.end(),
+                      parentID) != primary.vTrackID.end()) {
+            return static_cast<int>(ip);
+        }
+    }
+
+    return -1;
 }
 
 #endif // __H02TRACKINGACTION_H__

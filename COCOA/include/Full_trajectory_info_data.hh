@@ -84,10 +84,10 @@ private:
     std::vector<float>  conv_el_prod_y;
     std::vector<float>  conv_el_prod_z;
 
-    std::vector<int>   nuc_int_primary_track_idx;
-    std::vector<float> nuc_int_prod_x;
-    std::vector<float> nuc_int_prod_y;
-    std::vector<float> nuc_int_prod_z;
+    std::vector<int>   nucl_int_fPrimaryParticleIndex;
+    std::vector<float> nucl_int_prod_x;
+    std::vector<float> nucl_int_prod_y;
+    std::vector<float> nucl_int_prod_z;
 
     std::vector<float> caloExtrapolEta;     // pseudorapidity of the same-pdgid daughter track of maximum kinetic energy in the calorimeter
     std::vector<float> caloExtrapolPhi;     // phi of the same-pdgid daughter track of maximum kinetic energy in the calorimeter

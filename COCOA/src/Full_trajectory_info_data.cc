@@ -114,10 +114,10 @@ void Full_trajectory_info_data::fill_var(){
     
     // NEW: fill nuclear interaction vertex fields
     for (const FullTrajectoryInfo& nuc_tr : fAllNuclearInteractions) {
-        nuc_int_primary_track_idx.push_back(nuc_tr.fParentID);
-        nuc_int_prod_x.push_back(nuc_tr.fVertexPosition.x());
-        nuc_int_prod_y.push_back(nuc_tr.fVertexPosition.y());
-        nuc_int_prod_z.push_back(nuc_tr.fVertexPosition.z());
+        nucl_int_fPrimaryParticleIndex.push_back(nuc_tr.fParentID);
+        nucl_int_prod_x.push_back(nuc_tr.fVertexPosition.x());
+        nucl_int_prod_y.push_back(nuc_tr.fVertexPosition.y());
+        nucl_int_prod_z.push_back(nuc_tr.fVertexPosition.z());
     }
     
 }
@@ -146,10 +146,10 @@ void Full_trajectory_info_data::clear()
     conv_el_prod_x.clear();
     conv_el_prod_y.clear();
     conv_el_prod_z.clear();
-    nuc_int_primary_track_idx.clear();
-    nuc_int_prod_x.clear();
-    nuc_int_prod_y.clear();
-    nuc_int_prod_z.clear();
+    nucl_int_fPrimaryParticleIndex.clear();
+    nucl_int_prod_x.clear();
+    nucl_int_prod_y.clear();
+    nucl_int_prod_z.clear();
     caloExtrapolEta.clear();
     caloExtrapolPhi.clear();
     idExtrapolEta.clear();
@@ -185,10 +185,10 @@ void Full_trajectory_info_data::set_tree_branches(TTree *outTree)
     outTree->Branch("conv_el_prod_x",              "vector<float>", &conv_el_prod_x);
     outTree->Branch("conv_el_prod_y",              "vector<float>", &conv_el_prod_y);
     outTree->Branch("conv_el_prod_z",              "vector<float>", &conv_el_prod_z);
-    outTree->Branch("nuc_int_primary_track_idx",   "vector<int>",   &nuc_int_primary_track_idx);
-    outTree->Branch("nuc_int_prod_x",              "vector<float>", &nuc_int_prod_x);
-    outTree->Branch("nuc_int_prod_y",              "vector<float>", &nuc_int_prod_y);
-    outTree->Branch("nuc_int_prod_z",              "vector<float>", &nuc_int_prod_z);
+    outTree->Branch("nucl_int_primary_particle_idx",   "vector<int>",   &nucl_int_fPrimaryParticleIndex);
+    outTree->Branch("nucl_int_prod_x",              "vector<float>", &nucl_int_prod_x);
+    outTree->Branch("nucl_int_prod_y",              "vector<float>", &nucl_int_prod_y);
+    outTree->Branch("nucl_int_prod_z",              "vector<float>", &nucl_int_prod_z);
 }
 
 void Full_trajectory_info_data::SetParticleDepEnergy( const std::vector<float> &_particle_dep_energies) {

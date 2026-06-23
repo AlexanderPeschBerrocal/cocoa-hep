@@ -16,8 +16,8 @@ Config_reader_var::Config_reader_var()  :
 
     Type_of_running  = "Standard";
 
-    Save_geometry_material_map = true;
-    Save_geometry_gdml = true;
+    Save_geometry_material_map = false;
+    Save_geometry_gdml = false;
 
     Save_truth_particle_graph = false;
     Use_high_granularity = false;

@@ -193,7 +193,7 @@ G4VPhysicalVolume *DetectorConstruction::Construct()
 	if (config_json_var.Save_geometry_gdml)
 	{
 		G4GDMLParser parser;
-		parser.Write(MakeGDMLOutputPath(), expHall, false);
+		parser.Write(MakeGDMLOutputPath(), expHall);
 	}
 
 	return expHall;

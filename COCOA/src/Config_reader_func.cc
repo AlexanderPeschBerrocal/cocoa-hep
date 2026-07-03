@@ -12,8 +12,8 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     
     config_var.Output_file_path = configs["Output_file_path"].asString();
 
-    config_var.Save_geometry_material_map = configs.get("Save_geometry_material_map", false).asBool();
-    config_var.Geometry_material_map_path = configs.get("Geometry_material_map_path", "").asString();
+    config_var.Save_geometry_json = configs.get("Save_geometry_json", false).asBool();
+    config_var.Geometry_json_path = configs.get("Geometry_json_path", "").asString();
 
     config_var.Save_geometry_gdml = configs.get("Save_geometry_gdml", false).asBool();
     config_var.Geometry_gdml_path = configs.get("Geometry_gdml_path", "").asString();

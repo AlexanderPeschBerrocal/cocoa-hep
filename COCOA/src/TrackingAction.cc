@@ -188,43 +188,6 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 	    trajectories.fAllConvElectrons.push_back( conv_el_tr );
 	}
 
-	// NEW: capture nuclear interaction vertices similarly
-	/*
-    if (IsPrimaryHadronDaughter(aTrack) && IsInnerDetectorTrack(aTrack)) {
-    	FullTrajectoryInfo nuc_tr;
-		nuc_tr.is_conversion_track = false;
-		nuc_tr.fPDGCharge = aTrack->GetDynamicParticle()->GetCharge();
-		nuc_tr.fMomentumDir = aTrack->GetDynamicParticle()->GetMomentumDirection();
-		nuc_tr.fEnergy = aTrack->GetDynamicParticle()->GetTotalEnergy();
-		nuc_tr.fMass = aTrack->GetDynamicParticle()->GetMass();
-		nuc_tr.fTrackID = aTrack->GetTrackID();
-		nuc_tr.fPDGCode = aTrack->GetDefinition()->GetPDGEncoding();
-		nuc_tr.fMomentum = aTrack->GetMomentum();
-		nuc_tr.caloExtrapolMaxEkin = 0.0;
-		nuc_tr.caloExtrapolEta = nuc_tr.fMomentum.getEta();
-		nuc_tr.caloExtrapolPhi = GetPhi(nuc_tr.fMomentum.x(), nuc_tr.fMomentum.y());
-		nuc_tr.idExtrapolMaxEkin = nuc_tr.caloExtrapolMaxEkin;
-		nuc_tr.idExtrapolEta = nuc_tr.caloExtrapolEta;
-		nuc_tr.idExtrapolPhi = nuc_tr.caloExtrapolPhi;
-		nuc_tr.fVertexPosition = aTrack->GetVertexPosition();
-		nuc_tr.fGlobalTime = aTrack->GetGlobalTime();
-		nuc_tr.vTrackMomentumDir.push_back(aTrack->GetMomentum());
-		nuc_tr.vParentID.push_back(aTrack->GetParentID());
-		nuc_tr.vTrackID.push_back(aTrack->GetTrackID());
-		nuc_tr.vTrackPos.push_back(aTrack->GetPosition());
-		nuc_tr.vTrackTime.push_back(aTrack->GetGlobalTime());
-		nuc_tr.vTrackPDGID.push_back(aTrack->GetDefinition()->GetPDGEncoding());
-		// Find index of primary parent in fAllTrajectoryInfo
-		for (size_t ip=0; ip<trajectories.fAllTrajectoryInfo.size(); ++ip) {
-		if (trajectories.fAllTrajectoryInfo[ip].fTrackID == aTrack->GetParentID()) {
-			nuc_tr.fParentID = ip;
-			break;
-        }
-	    }
-
-    	trajectories.fAllNuclearInteractions.push_back(nuc_tr);
-	}*/
-
 	// capture nuclear interaction daughters
 	if (IsNuclearInteractionDaughter(aTrack) && IsInnerDetectorTrack(aTrack)) {
 		FullTrajectoryInfo nuc_tr;
@@ -298,26 +261,6 @@ bool TrackingAction::IsInnerDetectorTrack(const G4Track* aTrack) const {
     return logicalVolumeName.substr( 0, 5 ) == "inner";
     
 }
-/*
-bool TrackingAction::IsPrimaryHadronDaughter(const G4Track* aTrack) const {
-  G4int parentID = aTrack->GetParentID();
-  if (parentID == 0) return false;
-  // Exclude electrons/photons (already handled as conversions) and neutrinos:
-  G4int pdg = aTrack->GetDefinition()->GetPDGEncoding();
-  if (std::abs(pdg) == 11 || pdg == 22) return false;
-  // Check if parent is a primary hadron (pion, kaon, proton, neutron):
-  for (const FullTrajectoryInfo& primary : Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo) {
-    if (primary.fTrackID == parentID) {
-      int parentPDG = primary.fPDGCode;
-      if (std::abs(parentPDG)==211 || std::abs(parentPDG)==321 ||
-          std::abs(parentPDG)==2212|| std::abs(parentPDG)==2112) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-*/
 
 bool TrackingAction::IsNuclearInteractionDaughter(const G4Track* aTrack) const {
     if (!aTrack) return false;

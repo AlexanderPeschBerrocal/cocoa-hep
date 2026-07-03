@@ -67,7 +67,7 @@ public:
 private:
 	// G4VPhysicalVolume*   fGapPV;      // the gap physical volume
 
-	std::string MakeGeometryMaterialOutputPath() const;
+	std::string MakeJSONOutputPath() const;
 	std::string MakeGDMLOutputPath() const;
 
 	Geometry_definition geometry;

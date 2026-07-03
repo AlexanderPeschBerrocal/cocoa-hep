@@ -76,11 +76,11 @@ long double GetPhi(long double px, long double py) {
 	return phi;    
 }
 
-std::string DetectorConstruction::MakeGeometryMaterialOutputPath() const
+std::string DetectorConstruction::MakeJSONOutputPath() const
 {
-  if (!config_json_var.Geometry_material_map_path.empty())
+  if (!config_json_var.Geometry_json_path.empty())
   {
-    return config_json_var.Geometry_material_map_path;
+    return config_json_var.Geometry_json_path;
   }
 
   std::string out = config_json_var.Output_file_path;
@@ -183,11 +183,11 @@ G4VPhysicalVolume *DetectorConstruction::Construct()
 	CalorimeterConstruction Calorimeter(expHallLV, fCheckOverlaps, geometry);
 	InnerConstruction       InnerDetector(expHallLV, defaultMaterial, iron, elSi, fCheckOverlaps);
 
-	if (config_json_var.Save_geometry_material_map)
+	if (config_json_var.Save_geometry_json)
 	{
 	GeometryMaterialWriter::WriteGeometryMaterialJson(
 		expHall,
-		MakeGeometryMaterialOutputPath());
+		MakeJSONOutputPath());
 	}
 
 	if (config_json_var.Save_geometry_gdml)

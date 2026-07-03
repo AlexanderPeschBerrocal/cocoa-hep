@@ -92,14 +92,14 @@ public:
     };
     std::string Output_file_path;
 
-    std::string Geometry_material_map_path;
+    std::string Geometry_json_path;
     std::string Geometry_gdml_path;
 
     std::string Macro_file_path;
     std::string Type_of_running;
     bool Save_truth_particle_graph;
 
-    bool Save_geometry_material_map;
+    bool Save_geometry_json;
     bool Save_geometry_gdml;
 
     bool Use_high_granularity;

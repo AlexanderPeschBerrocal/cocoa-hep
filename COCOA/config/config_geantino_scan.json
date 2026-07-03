@@ -1,7 +1,7 @@
 // Configuration for COCOA example
 {
-    "Save_geometry_material_map": true,
-    "Geometry_material_map_path": "",
+    "Save_geometry_json": true,
+    "Geometry_json_path": "",
 
     "Save_geometry_gdml": true,
     "Geometry_gdml_path": "",

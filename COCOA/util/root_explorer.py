@@ -31,10 +31,10 @@ Install
 
 Run
 ---
-    streamlit run root_explorer_publication.py -- path/to/file.root
+    streamlit run root_explorer.py -- path/to/file.root
 
 or simply:
-    streamlit run root_explorer_publication.py
+    streamlit run root_explorer.py
 
 Notes
 -----

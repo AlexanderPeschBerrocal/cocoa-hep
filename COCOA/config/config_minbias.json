@@ -1,5 +1,5 @@
 {
-    "Output_file_path":"./cocoa_output_default.root",
+    "Output_file_path":"./cocoa_output_minbias.root",
 
     "Save_geometry_json": false,
     "Geometry_json_path": "",
@@ -7,7 +7,7 @@
     "Save_geometry_gdml": false,
     "Geometry_gdml_path": "",
     
-    "Macro_file_path":"macro/Pythia8/ttbar.in",
+    "Macro_file_path":"macro/Pythia8/minimum_bias.in",
     "Type_of_running": "Standard",
     "Save_truth_particle_graph": true,
     "Skip_unuseable_tracks": true,

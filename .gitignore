@@ -25,4 +25,3 @@ event_display/output/*
 event_display/*.html
 *.svg
 condor_setup/
-gdmlviz_tool/

@@ -115,6 +115,10 @@ void Full_trajectory_info_data::fill_var(){
     // NEW: fill nuclear interaction vertex fields
     for (const FullTrajectoryInfo& nuc_tr : fAllNuclearInteractions) {
         nucl_int_fPrimaryParticleIndex.push_back(nuc_tr.fParentID);
+        nucl_int_q.push_back(nuc_tr.fPDGCharge);
+        nucl_int_px.push_back(nuc_tr.fMomentum.x());
+        nucl_int_py.push_back(nuc_tr.fMomentum.y());
+        nucl_int_pz.push_back(nuc_tr.fMomentum.z());
         nucl_int_prod_x.push_back(nuc_tr.fVertexPosition.x());
         nucl_int_prod_y.push_back(nuc_tr.fVertexPosition.y());
         nucl_int_prod_z.push_back(nuc_tr.fVertexPosition.z());
@@ -147,6 +151,10 @@ void Full_trajectory_info_data::clear()
     conv_el_prod_y.clear();
     conv_el_prod_z.clear();
     nucl_int_fPrimaryParticleIndex.clear();
+    nucl_int_q.clear();
+    nucl_int_px.clear();
+    nucl_int_py.clear();
+    nucl_int_pz.clear();
     nucl_int_prod_x.clear();
     nucl_int_prod_y.clear();
     nucl_int_prod_z.clear();
@@ -186,6 +194,10 @@ void Full_trajectory_info_data::set_tree_branches(TTree *outTree)
     outTree->Branch("conv_el_prod_y",              "vector<float>", &conv_el_prod_y);
     outTree->Branch("conv_el_prod_z",              "vector<float>", &conv_el_prod_z);
     outTree->Branch("nucl_int_primary_particle_idx",   "vector<int>",   &nucl_int_fPrimaryParticleIndex);
+    outTree->Branch("nucl_int_q",                  "vector<float>", &nucl_int_q);
+    outTree->Branch("nucl_int_px",                 "vector<float>", &nucl_int_px);
+    outTree->Branch("nucl_int_py",                 "vector<float>", &nucl_int_py);
+    outTree->Branch("nucl_int_pz",                 "vector<float>", &nucl_int_pz);
     outTree->Branch("nucl_int_prod_x",              "vector<float>", &nucl_int_prod_x);
     outTree->Branch("nucl_int_prod_y",              "vector<float>", &nucl_int_prod_y);
     outTree->Branch("nucl_int_prod_z",              "vector<float>", &nucl_int_prod_z);

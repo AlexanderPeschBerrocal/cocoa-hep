@@ -85,6 +85,10 @@ private:
     std::vector<float>  conv_el_prod_z;
 
     std::vector<int>   nucl_int_fPrimaryParticleIndex;
+    std::vector<float> nucl_int_q;
+    std::vector<float> nucl_int_px;
+    std::vector<float> nucl_int_py;
+    std::vector<float> nucl_int_pz;
     std::vector<float> nucl_int_prod_x;
     std::vector<float> nucl_int_prod_y;
     std::vector<float> nucl_int_prod_z;

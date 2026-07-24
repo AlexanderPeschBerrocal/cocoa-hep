@@ -932,10 +932,16 @@ input[type=checkbox] {{ width: auto; }}
 .warn {{ background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 8px; border-radius: 6px; font-size: 12px; max-height: 120px; overflow: auto; }}
 #details {{ font-size: 12px; white-space: pre-wrap; background: var(--soft); padding: 8px; border-radius: 6px; max-height: 180px; overflow: auto; }}
 #hud {{ position: absolute; left: 12px; bottom: 12px; background: var(--hud); padding: 8px 10px; border-radius: 6px; font-size: 12px; border: 1px solid var(--border); }}
+.axis-label {{ position: absolute; display: none; pointer-events: none; font-size: 13px; font-weight: 800; transform: translate(-50%, -50%); text-shadow: 0 0 3px var(--panel), 0 0 3px var(--panel); }}
 .material-list {{ display: grid; gap: 4px; max-height: 230px; overflow: auto; padding-right: 4px; }}
 .material-item {{ display: grid; grid-template-columns: auto 18px 1fr auto; gap: 7px; align-items: center; font-size: 12px; padding: 3px 0; }}
 .swatch {{ width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); }}
 .small-actions {{ display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }}
+.camera-actions {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }}
+.camera-actions button {{ font-size: 11px; padding: 5px 2px; }}
+.axis-key {{ display: flex; gap: 10px; margin: 5px 0; font-size: 12px; font-weight: 700; }}
+.axis-x {{ color: #ef4444; }} .axis-y {{ color: #22c55e; }} .axis-z {{ color: #3b82f6; }}
+.range-value {{ flex: 0 0 48px; text-align: right; font-variant-numeric: tabular-nums; }}
 </style>
 </head>
 <body>
@@ -951,9 +957,24 @@ input[type=checkbox] {{ width: auto; }}
   <div class="stat"><span>World</span><b id="worldName"></b></div>
   <h2>View</h2>
   <button id="reset">Reset Camera</button>
+  <div class="camera-actions">
+    <button id="viewXYPos" title="Look toward the origin along -z">XY +Z</button>
+    <button id="viewXYNeg" title="Look toward the origin along +z">XY -Z</button>
+    <button id="viewXZPos" title="Look toward the origin along -y">XZ +Y</button>
+    <button id="viewXZNeg" title="Look toward the origin along +y">XZ -Y</button>
+    <button id="viewYZPos" title="Look toward the origin along -x">YZ +X</button>
+    <button id="viewYZNeg" title="Look toward the origin along +x">YZ -X</button>
+  </div>
   <label class="row"><span>Opacity</span><input id="opacity" type="range" min="5" max="100" value="78"></label>
   <label><input id="wireframe" type="checkbox"> Wireframe overlay</label>
+  <label><input id="coordinateAxes" type="checkbox" checked> Coordinate axes</label>
+  <div class="axis-key"><span class="axis-x">X</span><span class="axis-y">Y</span><span class="axis-z">Z</span></div>
   <label><input id="darkMode" type="checkbox"> Dark mode</label>
+  <h2>Phi cutout</h2>
+  <label><input id="phiCutEnabled" type="checkbox"> Remove azimuthal wedge</label>
+  <label class="row"><span>Start phi</span><input id="phiCutStart" type="range" min="-180" max="180" value="-45" step="1"><span id="phiCutStartValue" class="range-value">-45°</span></label>
+  <label class="row"><span>Width</span><input id="phiCutWidth" type="range" min="0" max="359" value="90" step="1"><span id="phiCutWidthValue" class="range-value">90°</span></label>
+  <div style="font-size:11px;color:var(--muted)">The wedge is measured counter-clockwise about global +z from its start angle.</div>
   <h2>Filter</h2>
   <input id="search" placeholder="Search name, material, solid...">
   <select id="solidType"></select>
@@ -967,6 +988,9 @@ input[type=checkbox] {{ width: auto; }}
 </aside>
 <main>
   <canvas id="gl"></canvas>
+  <span id="axisLabelX" class="axis-label axis-x">X</span>
+  <span id="axisLabelY" class="axis-label axis-y">Y</span>
+  <span id="axisLabelZ" class="axis-label axis-z">Z</span>
   <div id="hud">Drag rotate. Wheel zoom. Shift-drag pan. Click inspect.</div>
 </main>
 </div>
@@ -1033,15 +1057,22 @@ function shader(type, src) {{
 const vs = shader(gl.VERTEX_SHADER, `
 attribute vec3 a_pos; attribute vec4 a_col; attribute float a_vis;
 uniform mat4 u_mvp; uniform float u_opacity;
-varying vec4 v_col;
+varying vec4 v_col; varying vec3 v_pos;
 void main() {{
   gl_Position = u_mvp * vec4(a_pos, 1.0);
   v_col = vec4(a_col.rgb, a_col.a * u_opacity * a_vis);
+  v_pos = a_pos;
 }}`);
 const fs = shader(gl.FRAGMENT_SHADER, `
-precision mediump float; varying vec4 v_col;
+precision mediump float; varying vec4 v_col; varying vec3 v_pos;
+uniform float u_phi_cut_enabled; uniform float u_phi_cut_start; uniform float u_phi_cut_width;
 void main() {{
   if (v_col.a < 0.01) discard;
+  if (u_phi_cut_enabled > 0.5 && u_phi_cut_width > 0.0) {{
+    const float two_pi = 6.28318530718;
+    float relative_phi = mod(atan(v_pos.y, v_pos.x) - u_phi_cut_start + two_pi, two_pi);
+    if (relative_phi <= u_phi_cut_width) discard;
+  }}
   gl_FragColor = v_col;
 }}`);
 const prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog); gl.useProgram(prog);
@@ -1070,12 +1101,31 @@ const surfaceColBuf = bindArray('a_col', colors, 4);
 const visibleBuf = bindArray('a_vis', visible, 1);
 const uMvp = gl.getUniformLocation(prog, 'u_mvp');
 const uOpacity = gl.getUniformLocation(prog, 'u_opacity');
+const uPhiCutEnabled = gl.getUniformLocation(prog, 'u_phi_cut_enabled');
+const uPhiCutStart = gl.getUniformLocation(prog, 'u_phi_cut_start');
+const uPhiCutWidth = gl.getUniformLocation(prog, 'u_phi_cut_width');
 let wireBuffers = null;
 
 const bbox = SCENE.meta.bbox;
 const center = [(bbox[0]+bbox[3])/2, (bbox[1]+bbox[4])/2, (bbox[2]+bbox[5])/2];
 const radius = Math.hypot(bbox[3]-bbox[0], bbox[4]-bbox[1], bbox[5]-bbox[2]) || 1;
+const axisLength = radius * 0.18;
+const axisPositions = new Float32Array([
+  0,0,0, axisLength,0,0,
+  0,0,0, 0,axisLength,0,
+  0,0,0, 0,0,axisLength,
+]);
+const axisColors = new Float32Array([
+  0.94,0.16,0.16,1, 0.94,0.16,0.16,1,
+  0.10,0.78,0.30,1, 0.10,0.78,0.30,1,
+  0.12,0.42,0.96,1, 0.12,0.42,0.96,1,
+]);
+const axisVisible = new Float32Array(6); axisVisible.fill(1);
+const axisPosBuf = makeBuffer(axisPositions, gl.STATIC_DRAW);
+const axisColBuf = makeBuffer(axisColors, gl.STATIC_DRAW);
+const axisVisBuf = makeBuffer(axisVisible, gl.STATIC_DRAW);
 let yaw = -0.65, pitch = 0.45, dist = radius * 1.35, panX = 0, panY = 0;
+let cameraUp = [0,1,0];
 
 function mat4mul(a,b) {{
   const o = new Float32Array(16);
@@ -1104,6 +1154,37 @@ function clearCanvas() {{
   if (themeIsDark()) gl.clearColor(0.031,0.067,0.122,1);
   else gl.clearColor(0.985,0.99,1,1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+}}
+function phiCutRadians() {{
+  return {{
+    enabled: document.getElementById('phiCutEnabled').checked,
+    start: +document.getElementById('phiCutStart').value * Math.PI / 180,
+    width: +document.getElementById('phiCutWidth').value * Math.PI / 180,
+  }};
+}}
+function pointIsPhiCut(x, y) {{
+  const cut = phiCutRadians();
+  if (!cut.enabled || cut.width <= 0) return false;
+  const twoPi = 2*Math.PI;
+  const relative = ((Math.atan2(y, x) - cut.start) % twoPi + twoPi) % twoPi;
+  return relative <= cut.width;
+}}
+function updateAxisLabels(mvp, enabled) {{
+  const endpoints = [
+    ['axisLabelX', axisLength, 0, 0],
+    ['axisLabelY', 0, axisLength, 0],
+    ['axisLabelZ', 0, 0, axisLength],
+  ];
+  for (const [id, x, y, z] of endpoints) {{
+    const label = document.getElementById(id);
+    const tx=mvp[0]*x+mvp[4]*y+mvp[8]*z+mvp[12];
+    const ty=mvp[1]*x+mvp[5]*y+mvp[9]*z+mvp[13];
+    const tw=mvp[3]*x+mvp[7]*y+mvp[11]*z+mvp[15];
+    if (!enabled || tw <= 0) {{ label.style.display='none'; continue; }}
+    label.style.display='block';
+    label.style.left=((tx/tw*0.5+0.5)*canvas.clientWidth)+'px';
+    label.style.top=((-ty/tw*0.5+0.5)*canvas.clientHeight)+'px';
+  }}
 }}
 function buildWireBuffers() {{
   if (wireBuffers) return wireBuffers;
@@ -1164,12 +1245,17 @@ function render() {{
   const cx = center[0] + panX, cy = center[1] + panY, cz = center[2];
   const eye = [cx + dist*Math.cos(pitch)*Math.sin(yaw), cy + dist*Math.sin(pitch), cz + dist*Math.cos(pitch)*Math.cos(yaw)];
   const proj = perspective(45*Math.PI/180, canvas.width/canvas.height, radius/500, radius*20);
-  const view = lookAt(eye, [cx,cy,cz], [0,1,0]);
-  gl.uniformMatrix4fv(uMvp, false, mat4mul(proj, view));
+  const view = lookAt(eye, [cx,cy,cz], cameraUp);
+  const mvp = mat4mul(proj, view);
+  gl.uniformMatrix4fv(uMvp, false, mvp);
   setAttrib(locPos, surfacePosBuf, 3);
   setAttrib(locCol, surfaceColBuf, 4);
   setAttrib(locVis, visibleBuf, 1);
   gl.uniform1f(uOpacity, +document.getElementById('opacity').value/100);
+  const phiCut = phiCutRadians();
+  gl.uniform1f(uPhiCutEnabled, phiCut.enabled ? 1 : 0);
+  gl.uniform1f(uPhiCutStart, phiCut.start);
+  gl.uniform1f(uPhiCutWidth, phiCut.width);
   gl.drawArrays(gl.TRIANGLES, 0, positions.length/3);
   if (document.getElementById('wireframe').checked) {{
     const wire = buildWireBuffers();
@@ -1179,6 +1265,16 @@ function render() {{
     gl.uniform1f(uOpacity, 1.0);
     gl.drawArrays(gl.LINES, 0, wire.positions.length/3);
   }}
+  const axesEnabled = document.getElementById('coordinateAxes').checked;
+  if (axesEnabled) {{
+    setAttrib(locPos, axisPosBuf, 3);
+    setAttrib(locCol, axisColBuf, 4);
+    setAttrib(locVis, axisVisBuf, 1);
+    gl.uniform1f(uOpacity, 1.0);
+    gl.uniform1f(uPhiCutEnabled, 0.0);
+    gl.drawArrays(gl.LINES, 0, axisPositions.length/3);
+  }}
+  updateAxisLabels(mvp, axesEnabled);
   requestAnimationFrame(render);
 }}
 render();
@@ -1190,10 +1286,22 @@ window.addEventListener('mousemove', e => {{
   if (!drag) return;
   const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
   if (drag.shift) {{ panX -= dx*dist/900; panY += dy*dist/900; }}
-  else {{ yaw += dx*0.006; pitch = Math.max(-1.45, Math.min(1.45, pitch + dy*0.006)); }}
+  else {{ yaw += dx*0.006; pitch = Math.max(-1.55, Math.min(1.55, pitch + dy*0.006)); cameraUp = [0,1,0]; }}
 }});
-canvas.addEventListener('wheel', e => {{ e.preventDefault(); dist *= Math.exp(e.deltaY*0.001); }}, {{passive:false}});
-document.getElementById('reset').onclick = () => {{ yaw=-0.65; pitch=0.45; dist=radius*1.35; panX=0; panY=0; }};
+canvas.addEventListener('wheel', e => {{ e.preventDefault(); dist = Math.max(radius*0.01, Math.min(radius*50, dist*Math.exp(e.deltaY*0.001))); }}, {{passive:false}});
+function setCamera(newYaw, newPitch, up) {{
+  yaw=newYaw; pitch=newPitch; cameraUp=up; dist=radius*1.35; panX=0; panY=0;
+}}
+document.getElementById('reset').onclick = () => setCamera(-0.65, 0.45, [0,1,0]);
+document.getElementById('viewXYPos').onclick = () => setCamera(0, 0, [0,1,0]);
+document.getElementById('viewXYNeg').onclick = () => setCamera(Math.PI, 0, [0,1,0]);
+document.getElementById('viewXZPos').onclick = () => setCamera(0, Math.PI/2, [0,0,1]);
+document.getElementById('viewXZNeg').onclick = () => setCamera(0, -Math.PI/2, [0,0,1]);
+document.getElementById('viewYZPos').onclick = () => setCamera(Math.PI/2, 0, [0,0,1]);
+document.getElementById('viewYZNeg').onclick = () => setCamera(-Math.PI/2, 0, [0,0,1]);
+['phiCutStart','phiCutWidth'].forEach(id => document.getElementById(id).addEventListener('input', () => {{
+  document.getElementById(id + 'Value').textContent = document.getElementById(id).value + '°';
+}}));
 document.getElementById('wireframe').addEventListener('change', () => {{ if (document.getElementById('wireframe').checked) buildWireBuffers(); }});
 document.getElementById('darkMode').addEventListener('change', e => {{
   document.body.classList.toggle('dark', e.target.checked);
@@ -1226,10 +1334,11 @@ canvas.addEventListener('click', e => {{
   const aspect = canvas.width/canvas.height;
   const cx = center[0] + panX, cy = center[1] + panY, cz = center[2];
   const eye = [cx + dist*Math.cos(pitch)*Math.sin(yaw), cy + dist*Math.sin(pitch), cz + dist*Math.cos(pitch)*Math.cos(yaw)];
-  const mvp = mat4mul(perspective(45*Math.PI/180, aspect, radius/500, radius*20), lookAt(eye, [cx,cy,cz], [0,1,0]));
+  const mvp = mat4mul(perspective(45*Math.PI/180, aspect, radius/500, radius*20), lookAt(eye, [cx,cy,cz], cameraUp));
   for (let i=0; i<positions.length; i+=30) {{
     const id = ids[i/3]; if (!visible[i/3]) continue;
     const px=positions[i], py=positions[i+1], pz=positions[i+2];
+    if (pointIsPhiCut(px, py)) continue;
     const tx=mvp[0]*px+mvp[4]*py+mvp[8]*pz+mvp[12], ty=mvp[1]*px+mvp[5]*py+mvp[9]*pz+mvp[13], tw=mvp[3]*px+mvp[7]*py+mvp[11]*pz+mvp[15];
     if (tw <= 0) continue;
     const sx=(tx/tw*0.5+0.5)*rect.width, sy=(-ty/tw*0.5+0.5)*rect.height;

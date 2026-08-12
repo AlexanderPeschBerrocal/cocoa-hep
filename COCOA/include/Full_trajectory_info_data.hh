@@ -58,14 +58,14 @@ void fill_var();
     };
     std::vector < FullTrajectoryInfo> fAllTrajectoryInfo;
     std::vector < FullTrajectoryInfo> fAllConvElectrons;
-    std::vector < FullTrajectoryInfo> fAllNuclearInteractions;
+    std::vector < FullTrajectoryInfo> fAllNuclearInteractionDaughters;
 	std::vector <int>	particle_to_track;
 	std::vector <fastjet::PseudoJet> jets_objects;
     void SetParticleDepEnergy( const std::vector<float> &_particle_dep_energies);
     int  DeltaR_iso(float px, float py, float pz ,size_t idx_m,int particle_loop_pdgid);
 private:
 	std::vector <int>	particle_pdgid;
-        std::vector <int>   particleisIso;
+    std::vector <int>   particleisIso;
 	std::vector <float> particle_pt;
 	std::vector <float> particle_eta;
 	std::vector <float> particle_phi;

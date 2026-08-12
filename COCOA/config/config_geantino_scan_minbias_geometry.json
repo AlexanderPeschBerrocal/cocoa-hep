@@ -11,7 +11,6 @@
     "Type_of_running": "Detector_Geantino",
     "Save_truth_particle_graph": false,
     "Skip_unuseable_tracks": true,
-    "Use_high_granularity": false,
 
     "Geometry_definition":
     {

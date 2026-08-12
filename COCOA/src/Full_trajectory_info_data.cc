@@ -112,16 +112,15 @@ void Full_trajectory_info_data::fill_var(){
         conv_el_prod_z.push_back( conv_el_tr.fVertexPosition.z() );
     }
     
-    // NEW: fill nuclear interaction vertex fields
-    for (const FullTrajectoryInfo& nuc_tr : fAllNuclearInteractions) {
-        nucl_int_fPrimaryParticleIndex.push_back(nuc_tr.fParentID);
-        nucl_int_q.push_back(nuc_tr.fPDGCharge);
-        nucl_int_px.push_back(nuc_tr.fMomentum.x());
-        nucl_int_py.push_back(nuc_tr.fMomentum.y());
-        nucl_int_pz.push_back(nuc_tr.fMomentum.z());
-        nucl_int_prod_x.push_back(nuc_tr.fVertexPosition.x());
-        nucl_int_prod_y.push_back(nuc_tr.fVertexPosition.y());
-        nucl_int_prod_z.push_back(nuc_tr.fVertexPosition.z());
+    for (const FullTrajectoryInfo& nucl_int_tr : fAllNuclearInteractionDaughters) {
+        nucl_int_fPrimaryParticleIndex.push_back(nucl_int_tr.fParentID);
+        nucl_int_q.push_back(nucl_int_tr.fPDGCharge);
+        nucl_int_px.push_back(nucl_int_tr.fMomentum.x());
+        nucl_int_py.push_back(nucl_int_tr.fMomentum.y());
+        nucl_int_pz.push_back(nucl_int_tr.fMomentum.z());
+        nucl_int_prod_x.push_back(nucl_int_tr.fVertexPosition.x());
+        nucl_int_prod_y.push_back(nucl_int_tr.fVertexPosition.y());
+        nucl_int_prod_z.push_back(nucl_int_tr.fVertexPosition.z());
     }
     
 }
@@ -132,7 +131,7 @@ void Full_trajectory_info_data::clear()
 {
     fAllTrajectoryInfo.clear();
     fAllConvElectrons.clear();
-    fAllNuclearInteractions.clear();
+    fAllNuclearInteractionDaughters.clear();
     particle_pdgid.clear();
     particleisIso.clear();
     particle_pt.clear();

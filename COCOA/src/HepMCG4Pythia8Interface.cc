@@ -34,6 +34,7 @@
 // #include "OutputRunAction.hh"
 #include "HepMC/GenEvent.h"
 #include "Randomize.hh"
+#include <memory>
 // #include "Pythia8/Pythia.h"
 
 using namespace Pythia8;
@@ -107,19 +108,28 @@ HepMCG4Pythia8Interface::~HepMCG4Pythia8Interface()
 	delete messenger;
 }
 
-void HepMCG4Pythia8Interface::CallPythiaReadString(G4String par)
+bool HepMCG4Pythia8Interface::CallPythiaReadString(const G4String &par)
 {
-	pythia.readString(par);
+	return pythia.readString(par);
 }
 
-void HepMCG4Pythia8Interface::CallPythiaInit() //
+bool HepMCG4Pythia8Interface::CallPythiaInit()
 {
 
 // 	auto myUserHooks = make_shared<MyUserHooks>();
 // 	pythia.setUserHooksPtr(myUserHooks);
 	//MyUserHooks myUserHooks = MyUserHooks();
 	//pythia.setUserHooksPtr(myUserHooks);
-	pythia.init();
+	return pythia.init();
+}
+
+bool HepMCG4Pythia8Interface::ConfigureBeams(G4int beamPdg,
+		G4int targetPdg, G4double eCMGeV)
+{
+	return pythia.readString("Beams:idA = " + std::to_string(beamPdg)) &&
+		pythia.readString("Beams:idB = " + std::to_string(targetPdg)) &&
+		pythia.readString("Beams:eCM = " + std::to_string(eCMGeV)) &&
+		pythia.init();
 }
 
 void HepMCG4Pythia8Interface::CallPythiaStat()
@@ -132,12 +142,15 @@ Pythia8::Event HepMCG4Pythia8Interface::GetPythiaObject()
 	return sum_events;
 }
 
-void HepMCG4Pythia8Interface::SetRandomSeed(G4int iseed)
+bool HepMCG4Pythia8Interface::SetRandomSeed(G4int iseed)
 {
-	pythia.readString("Random:setSeed = on");
+	if (iseed < 1 || iseed > 900000000)
+		return false;
+	if (!pythia.readString("Random:setSeed = on"))
+		return false;
 	ostringstream Seed;
 	Seed << "Random:seed = " << iseed;
-	pythia.readString(Seed.str());
+	return pythia.readString(Seed.str());
 }
 
 void HepMCG4Pythia8Interface::PrintRandomStatus(std::ostream &ostr) const //
@@ -188,14 +201,22 @@ HepMC::GenEvent *HepMCG4Pythia8Interface::GenerateHepMCEvent()
 	// return hepmcevt;
 	//*  Pile-up end
 	int id = messenger->GQparticle;
-	HepMC::GenEvent *hepmcevt = new HepMC::GenEvent(HepMC::Units::MEV, HepMC::Units::MM);
+	std::unique_ptr<HepMC::GenEvent> hepmcevt(
+		new HepMC::GenEvent(HepMC::Units::MEV, HepMC::Units::MM));
 	if (id == 22122212) //* pp colision
 	{
-		//pythia.init();
-		if (!pythia.next())
-			cout << " Event generation aborted prematurely, owing to error!\n";
+		constexpr int maxAttempts = 10;
+		bool generated = false;
+		for (int attempt = 0; attempt < maxAttempts && !generated; ++attempt)
+			generated = pythia.next();
+		if (!generated)
+		{
+			G4cerr << "Pythia8 event generation failed after " << maxAttempts
+				   << " attempts" << G4endl;
+			return nullptr;
+		}
 
-		ToHepMC.fill_next_event(pythia, hepmcevt);
+		ToHepMC.fill_next_event(pythia, hepmcevt.get());
 
 		if (verbose > 1)
 			hepmcevt->print();
@@ -205,16 +226,28 @@ HepMC::GenEvent *HepMCG4Pythia8Interface::GenerateHepMCEvent()
 	else //*  Parton or particle with colour singlet
 	{
 		Pythia8::Event &event = pythia.event;
-		int count = 0;
-		do
+		if (messenger->MinEnergy <= 0. ||
+			messenger->MaxEnergy < messenger->MinEnergy ||
+			messenger->MaxEta < messenger->MinEta)
 		{
-			pythia.readString("ProcessLevel:all = off");
-			pythia.readString("HardQCD:all = on");
-			pythia.readString("Next:numberShowInfo = 0");
-			pythia.readString("Next:numberShowProcess = 0");
-			pythia.readString("Next:numberShowEvent = 0");
-			SetRandomSeed(CLHEP::RandFlat::shootInt(900000000));
-			pythia.init();
+			G4cerr << "Invalid particle-gun energy or eta range" << G4endl;
+			return nullptr;
+		}
+
+		constexpr int maxAttempts = 5;
+		bool generated = false;
+		for (int attempt = 0; attempt < maxAttempts && !generated; ++attempt)
+		{
+			if (!pythia.readString("ProcessLevel:all = off") ||
+				!pythia.readString("Next:numberShowInfo = 0") ||
+				!pythia.readString("Next:numberShowProcess = 0") ||
+				!pythia.readString("Next:numberShowEvent = 0") ||
+				!SetRandomSeed(1 + CLHEP::RandFlat::shootInt(899999999)) ||
+				!pythia.init())
+			{
+				G4cerr << "Pythia8 initialization failed" << G4endl;
+				return nullptr;
+			}
 
 			double minenergy = messenger->MinEnergy;
 			double maxenergy = messenger->MaxEnergy;
@@ -270,23 +303,22 @@ HepMC::GenEvent *HepMCG4Pythia8Interface::GenerateHepMCEvent()
 					// fillParticle(-id, ee, -eta, phi, 2, event, pdt, false);
 				}
 			}
-			count += 1;
-		} while (!(pythia.next() || count == 5));
-		if (count == 5)
-		{
-			cout << " 2Event generation aborted prematurely, owing to error!\n";
+			generated = pythia.next();
 		}
-		else
+		if (!generated)
 		{
-			ToHepMC.fill_next_event(pythia, hepmcevt, -1, false);
-			sum_events = event;
-			if (verbose > 1)
-			{
-				hepmcevt->print();
-			}
+			G4cerr << "Pythia8 event generation failed after " << maxAttempts
+				   << " attempts" << G4endl;
+			return nullptr;
+		}
+		ToHepMC.fill_next_event(pythia, hepmcevt.get(), -1, false);
+		sum_events = event;
+		if (verbose > 1)
+		{
+			hepmcevt->print();
 		}
 	}
-	return hepmcevt;
+	return hepmcevt.release();
 }
 
 void HepMCG4Pythia8Interface::fillParticle(int pdgid, double ee, double eta_init, double phi_init, int status, Pythia8::Event &event, Pythia8::ParticleData &pdt, bool atRest)

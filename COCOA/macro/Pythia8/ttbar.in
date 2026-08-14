@@ -16,4 +16,4 @@
 
 /tracking/storeTrajectory 1
 
-/run/beamOn 10
+/run/beamOn {numberOfEvents}

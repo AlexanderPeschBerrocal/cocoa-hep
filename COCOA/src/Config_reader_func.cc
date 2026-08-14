@@ -2,20 +2,70 @@
 
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
+#include <set>
+
+namespace
+{
+void requireNumericArray(const Json::Value &value, const std::string &name)
+{
+    if (!value.isArray() || value.empty())
+        throw std::runtime_error(name + " must be a non-empty array");
+    for (Json::ArrayIndex i = 0; i < value.size(); ++i)
+    {
+        if (!value[i].isNumeric())
+            throw std::runtime_error(name + " must contain only numbers");
+    }
+}
+
+void requireSameSize(const Json::Value &left, const Json::Value &right,
+                     const std::string &description)
+{
+    if (left.size() != right.size())
+        throw std::runtime_error("Mismatched configuration lengths: " + description);
+}
+
+void requireMatchingNumeric2D(const Json::Value &left, const Json::Value &right,
+                              const std::string &description)
+{
+    if (!left.isArray() || left.empty() || !right.isArray() ||
+        left.size() != right.size())
+        throw std::runtime_error("Invalid high-granularity arrays: " + description);
+    for (Json::ArrayIndex i = 0; i < left.size(); ++i)
+    {
+        requireNumericArray(left[i], description);
+        requireNumericArray(right[i], description);
+        requireSameSize(left[i], right[i], description);
+    }
+}
+}
 
 Config_reader_func::Config_reader_func(std::string path, Config_reader_var &config_var)
 {
     
     std::ifstream config_doc(path, std::ifstream::binary);
+    if (!config_doc.is_open())
+        throw std::runtime_error("Cannot open configuration file: " + path);
 
-    config_doc >> configs;
+    Json::CharReaderBuilder builder;
+    builder["allowComments"] = false;
+    builder["collectComments"] = false;
+    builder["strictRoot"] = true;
+    builder["failIfExtra"] = true;
+    std::string parse_errors;
+    if (!Json::parseFromStream(builder, config_doc, &configs, &parse_errors))
+        throw std::runtime_error("Invalid JSON in " + path + ": " + parse_errors);
+
+    if (!configs.isObject() || !configs["Geometry_definition"].isObject())
+        throw std::runtime_error("Configuration requires a Geometry_definition object");
     
-    config_var.Output_file_path = configs["Output_file_path"].asString();
-    config_var.Type_of_running = configs["Type_of_running"].asString();
-    config_var.Macro_file_path = configs["Macro_file_path"].asString();
-    config_var.Save_truth_particle_graph = configs["Save_truth_particle_graph"].asBool();
-    config_var.Use_high_granularity = configs["Use_high_granularity"].asBool();
-    config_var.Skip_unuseable_tracks = configs["Skip_unuseable_tracks"].asBool();
+    config_var.Output_file_path = configs.get("Output_file_path", "").asString();
+    config_var.Type_of_running = configs.get("Type_of_running", "GeometryCheck").asString();
+    config_var.Number_of_events = configs.get("Number_of_events", 1).asInt();
+    config_var.Macro_file_path = configs.get("Macro_file_path", "").asString();
+    config_var.Save_truth_particle_graph = configs.get("Save_truth_particle_graph", false).asBool();
+    config_var.Use_high_granularity = configs.get("Use_high_granularity", false).asBool();
+    config_var.Skip_unuseable_tracks = configs.get("Skip_unuseable_tracks", false).asBool();
     config_var.doSuperclustering = configs.get( "Do_superclustering", false ).asBool();
 
     config_var.r_inn_calo = configs["Geometry_definition"]["Inner_calorimeter_layer"].asDouble();
@@ -30,6 +80,99 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
 	config_var.check_geometry_overlap = true;
     config_var.use_inner_detector = configs["Geometry_definition"].get( "Use_inner_detector", true ).asBool();
     config_var.use_ID_support = configs["Geometry_definition"].get( "Use_ID_support", true ).asBool();
+
+    if (config_var.r_inn_calo <= 0. || config_var.Layer_gap < 0. ||
+        config_var.max_eta_barrel <= 0. ||
+        config_var.max_eta_endcap < config_var.max_eta_barrel)
+        throw std::runtime_error("Invalid calorimeter dimensions or eta coverage");
+
+    const Json::Value &geometry_config = configs["Geometry_definition"];
+    const Json::Value &granularity = geometry_config["Detector_granularity"];
+    const Json::Value &pixels_ecal = granularity["Number_of_pixels_ECAL"];
+    const Json::Value &pixels_hcal = granularity["Number_of_pixels_HCAL"];
+    const Json::Value &width_ecal = granularity["Width_of_ECAL_layers_in_X0"];
+    const Json::Value &width_hcal = granularity["Width_of_HCAL_layers_in_Lambda_int"];
+    const Json::Value &noise_ecal = geometry_config["Noise_in_ECAL"];
+    const Json::Value &noise_hcal = geometry_config["Noise_in_HCAL"];
+    requireNumericArray(pixels_ecal, "Number_of_pixels_ECAL");
+    requireNumericArray(pixels_hcal, "Number_of_pixels_HCAL");
+    requireNumericArray(width_ecal, "Width_of_ECAL_layers_in_X0");
+    requireNumericArray(width_hcal, "Width_of_HCAL_layers_in_Lambda_int");
+    requireNumericArray(noise_ecal, "Noise_in_ECAL");
+    requireNumericArray(noise_hcal, "Noise_in_HCAL");
+    requireSameSize(pixels_ecal, width_ecal, "ECAL pixels and widths");
+    requireSameSize(pixels_ecal, noise_ecal, "ECAL pixels and noise");
+    requireSameSize(pixels_hcal, width_hcal, "HCAL pixels and widths");
+    requireSameSize(pixels_hcal, noise_hcal, "HCAL pixels and noise");
+
+    for (const auto *pixels : {&pixels_ecal, &pixels_hcal})
+    {
+        for (Json::ArrayIndex i = 0; i < pixels->size(); ++i)
+        {
+            if ((*pixels)[i].asInt() <= 0)
+                throw std::runtime_error("Detector pixel counts must be positive");
+        }
+    }
+
+    const double sampling_ecal = geometry_config.get("SamplingFraction_ECAL", 0.02).asDouble();
+    const double sampling_hcal = geometry_config.get("SamplingFraction_HCAL", 0.02).asDouble();
+    if (sampling_ecal <= 0. || sampling_ecal > 1. ||
+        sampling_hcal <= 0. || sampling_hcal > 1.)
+        throw std::runtime_error("Sampling fractions must be in the interval (0, 1]");
+
+    requireSameSize(geometry_config["Material_for_ECAL"],
+                    geometry_config["ECAL_material_mixing_in_volume_proportion"],
+                    "ECAL materials and mixing proportions");
+    requireSameSize(geometry_config["Material_for_HCAL"],
+                    geometry_config["HCAL_material_mixing_in_volume_proportion"],
+                    "HCAL materials and mixing proportions");
+    if (!geometry_config["Material_for_ECAL"].isArray() ||
+        geometry_config["Material_for_ECAL"].empty() ||
+        !geometry_config["Material_for_HCAL"].isArray() ||
+        geometry_config["Material_for_HCAL"].empty())
+        throw std::runtime_error("ECAL and HCAL each require at least one material");
+    requireNumericArray(geometry_config["ECAL_material_mixing_in_volume_proportion"],
+                        "ECAL material proportions");
+    requireNumericArray(geometry_config["HCAL_material_mixing_in_volume_proportion"],
+                        "HCAL material proportions");
+
+    if (config_var.Use_high_granularity)
+    {
+        const Json::Value &high = geometry_config["High_Granularity_detector"];
+        if (!high.isObject())
+            throw std::runtime_error("Use_high_granularity requires High_Granularity_detector");
+        requireMatchingNumeric2D(high["Number_of_pixels_ECAL"],
+                                 high["Width_of_ECAL_layers_in_X0"],
+                                 "high-granularity ECAL pixels and widths");
+        requireMatchingNumeric2D(high["Number_of_pixels_HCAL"],
+                                 high["Width_of_HCAL_layers_in_Lambda_int"],
+                                 "high-granularity HCAL pixels and widths");
+        requireSameSize(high["Number_of_pixels_ECAL"], pixels_ecal,
+                        "low- and high-granularity ECAL layers");
+        requireSameSize(high["Number_of_pixels_HCAL"], pixels_hcal,
+                        "low- and high-granularity HCAL layers");
+    }
+
+    if (config_var.Type_of_running == "Standard")
+    {
+		if (config_var.Number_of_events <= 0)
+			throw std::runtime_error("Number_of_events must be positive");
+        const Json::Value &jets = configs["Jet_parameters"];
+        const std::set<std::string> algorithms = {
+            "kt_algorithm", "cambridge_algorithm", "antikt_algorithm",
+            "genkt_algorithm", "ee_kt_algorithm", "ee_genkt_algorithm"};
+        const std::set<std::string> schemes = {
+            "E_scheme", "pt_scheme", "pt2_scheme", "Et_scheme", "Et2_scheme",
+            "BIpt_scheme", "BIpt2_scheme", "WTA_pt_scheme",
+            "WTA_modp_scheme", "external_scheme"};
+        if (!jets.isObject() || algorithms.count(jets["algorithm"].asString()) == 0 ||
+            schemes.count(jets["recombination_scheme"].asString()) == 0 ||
+            !jets["radius"].isNumeric() || jets["radius"].asDouble() <= 0. ||
+            !jets["ptmin"].isNumeric() || jets["ptmin"].asDouble() < 0.)
+            throw std::runtime_error("Jet_parameters is missing or invalid");
+        if (!configs["Fiducial_cuts"].isObject())
+            throw std::runtime_error("Standard runs require Fiducial_cuts");
+    }
 
     Json::Value &layervals = configs["Graph_construction"]["max_samelayer_edges"];
     Fill_1D_vector(layervals, config_var.graph_construction.max_samelayer_edges);
@@ -62,6 +205,10 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     config_var.fiducial_cuts.pt_min = configs["Fiducial_cuts"].get( "pt_min_gev", 1.0 ).asFloat();
     config_var.fiducial_cuts.eta_max = configs["Fiducial_cuts"].get( "eta_max", 3.0 ).asFloat();
     config_var.fiducial_cuts.dR_cut = configs["Fiducial_cuts"].get( "dR_cut", -1.0 ).asFloat();
+
+    if (config_var.fiducial_cuts.pt_min < 0. ||
+        config_var.fiducial_cuts.eta_max <= 0.)
+        throw std::runtime_error("Fiducial cuts require pt_min_gev >= 0 and eta_max > 0");
 
     if (config_var.Type_of_running != "Standard")
     {

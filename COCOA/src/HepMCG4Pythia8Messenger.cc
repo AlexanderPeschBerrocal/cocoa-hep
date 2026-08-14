@@ -34,6 +34,8 @@
 
 #include <sstream>
 #include <fstream>
+#include <stdexcept>
+#include "G4Exception.hh"
 #include "G4UIdirectory.hh"
 #include "G4UIcmdWithoutParameter.hh"
 #include "G4UIcmdWithAString.hh"
@@ -57,11 +59,11 @@ HepMCG4Pythia8Messenger::HepMCG4Pythia8Messenger(HepMCG4Pythia8Interface* agen)
 
   cpythiainit= new G4UIcommand("/generator/pythia8/init", this);
   cpythiainit-> SetGuidance("call INIT");
-  G4UIparameter* beam= new G4UIparameter("beam particle (pdg code)", 's', false);
+  G4UIparameter* beam= new G4UIparameter("beamPdg", 'i', false);
   cpythiainit-> SetParameter(beam);
-  G4UIparameter* target= new G4UIparameter("target particle (pdg code)", 's', false);
+  G4UIparameter* target= new G4UIparameter("targetPdg", 'i', false);
   cpythiainit-> SetParameter(target);
-  G4UIparameter* eCM= new G4UIparameter("energy of system in CM frame (GeV)", 'd', false);
+  G4UIparameter* eCM= new G4UIparameter("eCMGeV", 'd', false);
   cpythiainit-> SetParameter(eCM);
 
   cpythiastat= new G4UIcmdWithoutParameter("/generator/pythia8/stat", this);
@@ -79,6 +81,8 @@ HepMCG4Pythia8Messenger::HepMCG4Pythia8Messenger(HepMCG4Pythia8Interface* agen)
 
   setSeed= new G4UIcmdWithAnInteger("/generator/pythia8/setSeed", this);
   setSeed-> SetGuidance("set initial seed.");
+  setSeed->SetParameterName("seed", false);
+  setSeed->SetRange("seed>=1 && seed<=900000000");
 
   printRandomStatus=
     new G4UIcmdWithAString("/generator/pythia8/printRandomStatus", this);
@@ -90,8 +94,12 @@ HepMCG4Pythia8Messenger::HepMCG4Pythia8Messenger(HepMCG4Pythia8Interface* agen)
   quarkgluon->SetGuidance("set quark or gluon.");
   minEnergy = new G4UIcmdWithADouble("/generator/pythia8/minEnergy", this);
   minEnergy->SetGuidance("set min Energy.");
+  minEnergy->SetParameterName("minEnergy", false);
+  minEnergy->SetRange("minEnergy>0.");
   maxEnergy = new G4UIcmdWithADouble("/generator/pythia8/maxEnergy", this);
   maxEnergy->SetGuidance("set max Energy.");
+  maxEnergy->SetParameterName("maxEnergy", false);
+  maxEnergy->SetRange("maxEnergy>0.");
   minEta = new G4UIcmdWithADouble("/generator/pythia8/minEta", this);
   minEta->SetGuidance("set min Eta.");
   maxEta = new G4UIcmdWithADouble("/generator/pythia8/maxEta", this);
@@ -129,21 +137,37 @@ void HepMCG4Pythia8Messenger::SetNewValue(G4UIcommand* command,
     gen-> Print();
     
   } else if (command == cpythiainit) { // /pythiainit ...
-    gen-> CallPythiaInit();
+    std::istringstream input(newValues);
+    G4int beamPdg = 0;
+    G4int targetPdg = 0;
+    G4double eCMGeV = 0.;
+    if (!(input >> beamPdg >> targetPdg >> eCMGeV) || eCMGeV <= 0. ||
+        !gen->ConfigureBeams(beamPdg, targetPdg, eCMGeV)) {
+      G4Exception("HepMCG4Pythia8Messenger::SetNewValue",
+                  "COCOA_PYTHIA_INIT", FatalException,
+                  "Could not configure or initialize Pythia8");
+    }
 
   } else if (command == cpythiastat) { // /pythiastat ...
     gen-> CallPythiaStat();
 
   } else if (command == cpythiaread) { // /pythiaread ...
-    G4String s= newValues;
-    gen-> CallPythiaReadString(s);
+    if (!gen->CallPythiaReadString(newValues)) {
+      const G4String message = "Invalid Pythia8 setting: " + newValues;
+      G4Exception("HepMCG4Pythia8Messenger::SetNewValue",
+                  "COCOA_PYTHIA_CONFIG", FatalException, message.c_str());
+    }
 
   } else if (command == setUserParameters) { // /setUserParameters ...
     gen-> SetUserParameters();
 
   } else if (command == setSeed) { // /setSeed ...
     G4int iseed= setSeed-> GetNewIntValue(newValues);
-    gen-> SetRandomSeed(iseed);
+    if (!gen->SetRandomSeed(iseed)) {
+      G4Exception("HepMCG4Pythia8Messenger::SetNewValue",
+                  "COCOA_PYTHIA_SEED", FatalException,
+                  "Pythia8 seed must be in the range [1, 900000000]");
+    }
 
   } else if (command == printRandomStatus) { // /printRandomStatus ...
     G4String s= newValues;

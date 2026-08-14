@@ -6,7 +6,6 @@
 #include "Cells_data.hh"
 // #include "DetectorGeometryDefinitions.hh"
 #include "Config_reader_var.hh"
-#include "TRandom.h"
 
 
 class ReduceResolution

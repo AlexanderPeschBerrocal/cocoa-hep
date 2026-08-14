@@ -109,7 +109,8 @@ void OutputRunAction::BeginOfRunAction(const G4Run *run)
 		Particle_flow_data &pflow_obj = Particle_flow_data::GetInstance();
 		cells_low.set_tree_branches(outTree_low);
 		track_list_low.set_tree_branches(outTree_low, config_var.low_resolution.kNLayers);
-		truth_record_graph.set_tree_branches(outTree_low);
+		if (m_save_truth_graph)
+			truth_record_graph.set_tree_branches(outTree_low);
 		final_state_particle.set_tree_branches(outTree_low);
 		topo_clusts.set_tree_branches(outTree_low);
 		if ( config_var.doPFlow ) {

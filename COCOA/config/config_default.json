@@ -1,6 +1,7 @@
 {
     "Output_file_path":"./cocoa_output_default.root",
     "Macro_file_path":"macro/Pythia8/ttbar.in",
+    "Number_of_events": 10,
     "Type_of_running": "Standard",
     "Save_truth_particle_graph": true,
     "Skip_unuseable_tracks": true,

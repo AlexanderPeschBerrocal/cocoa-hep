@@ -1,7 +1,7 @@
-// Configuration for COCOA example
 {
     "Output_file_path":"./Geantino.root",
     "Macro_file_path":"./macro/Geant4Gun/geantino_scan.in",
+    "Number_of_events": 3005,
     "Type_of_running": "Detector_Geantino",
     "Save_truth_particle_graph": false,
     "Use_high_granularity": false,

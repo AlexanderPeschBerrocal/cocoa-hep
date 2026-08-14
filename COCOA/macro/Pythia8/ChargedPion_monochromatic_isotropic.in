@@ -7,4 +7,4 @@
 /generator/pythia8/maxEnergy 20
 /generator/pythia8/minEta -2.5
 /generator/pythia8/maxEta 2.5
-/run/beamOn 100
+/run/beamOn {numberOfEvents}

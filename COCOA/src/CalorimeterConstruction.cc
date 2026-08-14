@@ -1,4 +1,5 @@
 #include "CalorimeterConstruction.hh"
+#include <string>
 
 #include "G4Box.hh"
 #include "G4ChordFinder.hh"
@@ -54,14 +55,17 @@ CalorimeterConstruction::~CalorimeterConstruction()
 {
 	;
 }
-char *CalorimeterConstruction::Name_creation(char *name, int low_layer, int high_layer)
+G4String CalorimeterConstruction::Name_creation(G4String name, int low_layer, int high_layer) const
 {
-    //
-    // Assumption: less than 10 layers.
-    //
-	name[4] = (low_layer + 49);
-	name[6] = (high_layer + 49);
-	return name;
+	std::string result(name.c_str());
+	auto position = result.find('N');
+	if (position == std::string::npos)
+		return name;
+	result.replace(position, 1, std::to_string(low_layer + 1));
+	position = result.find('N');
+	if (position != std::string::npos)
+		result.replace(position, 1, std::to_string(high_layer + 1));
+	return G4String(result.c_str());
 }
 
 void CalorimeterConstruction::EndCap_Calorimeter()
@@ -87,14 +91,14 @@ void CalorimeterConstruction::EndCap_Calorimeter()
 				      nPixelsMax / geometry.number_of_pixels_ECAL[ilow_layer][ihigh_layer],
 				      minDPhi,
 				      r_inn, depth, previous_layers_depths, config_json_var.Material_ECAL, ECAL1_VisAtt,
-				      Name_creation(strdup("ECALN_N_Endcap_forward_LV"), ilow_layer, ihigh_layer),
-				      Name_creation(strdup("ECALN_N_Endcap_forward_PL"), ilow_layer, ihigh_layer), 1 );
+				      Name_creation("ECALN_N_Endcap_forward_LV", ilow_layer, ihigh_layer),
+				      Name_creation("ECALN_N_Endcap_forward_PL", ilow_layer, ihigh_layer), 1 );
 		    Build_EndCap_CAL( nPixelsMax,
 		    		      nPixelsMax / geometry.number_of_pixels_ECAL[ilow_layer][ihigh_layer],
 		    		      minDPhi,
 		    		      r_inn, depth, previous_layers_depths, config_json_var.Material_ECAL, ECAL1_VisAtt,
-		    		      Name_creation(strdup("ECALN_N_Endcap_back_LV"), ilow_layer, ihigh_layer), 
-		    		      Name_creation(strdup("ECALN_N_Endcap_back_PL"), ilow_layer, ihigh_layer), -1 );
+				      Name_creation("ECALN_N_Endcap_back_LV", ilow_layer, ihigh_layer),
+				      Name_creation("ECALN_N_Endcap_back_PL", ilow_layer, ihigh_layer), -1 );
 		    previous_layers_depths += depth;
 		}
 	}
@@ -134,14 +138,14 @@ void CalorimeterConstruction::EndCap_Calorimeter()
 					  nPixelsMax / geometry.number_of_pixels_HCAL[ilow_layer][ihigh_layer],
 					  minDPhi,
 					  r_inn, depth, previous_layers_depths, config_json_var.Material_HCAL, HCAL1_VisAtt,
-					  Name_creation(strdup("HCALN_N_Endcap_forward_LV"), ilow_layer, ihigh_layer), 
-					  Name_creation(strdup("HCALN_N_Endcap_forward_PL"), ilow_layer, ihigh_layer), 1 );
+					  Name_creation("HCALN_N_Endcap_forward_LV", ilow_layer, ihigh_layer),
+					  Name_creation("HCALN_N_Endcap_forward_PL", ilow_layer, ihigh_layer), 1 );
 			Build_EndCap_CAL( nPixelsMax,
 					  nPixelsMax / geometry.number_of_pixels_HCAL[ilow_layer][ihigh_layer],
 					  minDPhi,
 					  r_inn, depth, previous_layers_depths, config_json_var.Material_HCAL, HCAL1_VisAtt, 
-					  Name_creation(strdup("HCALN_N_Endcap_back_LV"), ilow_layer, ihigh_layer), 
-					  Name_creation(strdup("HCALN_N_Endcap_back_PL"), ilow_layer, ihigh_layer), -1 );
+					  Name_creation("HCALN_N_Endcap_back_LV", ilow_layer, ihigh_layer),
+					  Name_creation("HCALN_N_Endcap_back_PL", ilow_layer, ihigh_layer), -1 );
 			previous_layers_depths += depth;			
 		}
 	}
@@ -175,15 +179,15 @@ void CalorimeterConstruction::Barrel_Calorimeter()
 					 minDEta,
 					 minDPhi,
 					 r_inn, r_out, previous_layers_delta_r, config_json_var.Material_ECAL, ECAL1_VisAtt,
-					 Name_creation(strdup("ECALN_N_forward_LV"), ilow_layer, ihigh_layer), 
-					 Name_creation(strdup("ECALN_N_forward_PL"), ilow_layer, ihigh_layer), 1);
+					 Name_creation("ECALN_N_forward_LV", ilow_layer, ihigh_layer),
+					 Name_creation("ECALN_N_forward_PL", ilow_layer, ihigh_layer), 1);
 			Build_Barrel_CAL(nPixelsMax,
 					 nPixelsMax / geometry.number_of_pixels_ECAL[ilow_layer][ihigh_layer],
 					 minDEta,
 					 minDPhi,
 					 r_inn, r_out, previous_layers_delta_r, config_json_var.Material_ECAL, ECAL1_VisAtt,
-					 Name_creation(strdup("ECALN_N_back_LV"), ilow_layer, ihigh_layer), 
-					 Name_creation(strdup("ECALN_N_back_PL"), ilow_layer, ihigh_layer), -1);
+					 Name_creation("ECALN_N_back_LV", ilow_layer, ihigh_layer),
+					 Name_creation("ECALN_N_back_PL", ilow_layer, ihigh_layer), -1);
 			previous_layers_delta_r += r_out - r_inn;
 		}
 	}
@@ -231,15 +235,15 @@ void CalorimeterConstruction::Barrel_Calorimeter()
 					  minDEta,
 					  minDPhi,
 					  r_inn, r_out, previous_layers_delta_r, config_json_var.Material_HCAL, HCAL1_VisAtt,
-					  Name_creation(strdup("HCALN_N_forward_LV"), ilow_layer, ihigh_layer),
-					  Name_creation(strdup("HCALN_N_forward_PL"), ilow_layer, ihigh_layer), 1 );
+					  Name_creation("HCALN_N_forward_LV", ilow_layer, ihigh_layer),
+					  Name_creation("HCALN_N_forward_PL", ilow_layer, ihigh_layer), 1 );
 			Build_Barrel_CAL( nPixelsMax,
 					  nPixelsMax / geometry.number_of_pixels_HCAL[ilow_layer][ihigh_layer],
 					  minDEta,
 					  minDPhi,
 					  r_inn, r_out, previous_layers_delta_r, config_json_var.Material_HCAL, HCAL1_VisAtt,
-					  Name_creation(strdup("HCALN_N_back_LV"), ilow_layer, ihigh_layer),
-					  Name_creation(strdup("HCALN_N_back_PL"), ilow_layer, ihigh_layer), -1 );
+					  Name_creation("HCALN_N_back_LV", ilow_layer, ihigh_layer),
+					  Name_creation("HCALN_N_back_PL", ilow_layer, ihigh_layer), -1 );
 			previous_layers_delta_r += r_out - r_inn;
 		}
 	}

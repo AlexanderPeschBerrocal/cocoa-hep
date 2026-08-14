@@ -29,7 +29,7 @@ class CalorimeterConstruction {
 			       G4Material *Material_CAL, G4VisAttributes* VisAtt, 
 			       const char *LV,  const char *PL, int direction );
     private:
-        char* Name_creation(char *name, int low_layer, int high_layer);
+        G4String Name_creation(G4String name, int low_layer, int high_layer) const;
         template <typename T>
 	T           GetMinOrMax(const std::vector<std::vector<T > >& array_2d, bool chooseMin) const;
         int         GetNPixelsMax() const;

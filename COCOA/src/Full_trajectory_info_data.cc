@@ -2,6 +2,7 @@
 #include "DetectorConstruction.hh"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 
 Full_trajectory_info_data::Full_trajectory_info_data(/* args */)
 {;}
@@ -24,13 +25,13 @@ void Full_trajectory_info_data::make_pseudo_jet_particles()
 int Full_trajectory_info_data::DeltaR_iso(float px, float py, float pz ,size_t idx_m,int pdgid) {
 
     size_t n_particles = fAllTrajectoryInfo.size();
-    
-    float ptot_origin = sqrt(px*px+py*py+pz*pz);
-    float theta_origin = acos(pz/ptot_origin);
-    float eta_origin = -1*log(tan(theta_origin/2.));
-    float phi_origin = atan(py/px);
 
-    float pT =  sqrt(px*px+py*py) / 1e3;
+    const float transverse_momentum = std::hypot(px, py);
+    if (transverse_momentum <= 0.F) return 0;
+    const float eta_origin = std::asinh(pz/transverse_momentum);
+    const float phi_origin = std::atan2(py, px);
+
+    const float pT = transverse_momentum / 1e3;
     float iso_radius = std::min(10./pT, 0.2);
 
     int isIso = 0;
@@ -46,15 +47,15 @@ int Full_trajectory_info_data::DeltaR_iso(float px, float py, float pz ,size_t i
 	float px_loop   = fAllTrajectoryInfo.at(part_i).fMomentum.x();
 	float py_loop   = fAllTrajectoryInfo.at(part_i).fMomentum.y();
 	float pz_loop   = fAllTrajectoryInfo.at(part_i).fMomentum.z();
-	float phi       = atan(py_loop/px_loop);
-	float ptot_loop = sqrt(px_loop*px_loop+py_loop*py_loop+pz_loop*pz_loop);
-	float theta     = acos(pz_loop/ptot_loop);
-	float eta       = -1*log(tan(theta/2.));
-	float dphi      = acos(cos(phi_origin-phi));
-	float deta      = eta_origin-eta;
-	float dr        = sqrt(dphi*dphi+deta*deta);
+	const float loop_pt = std::hypot(px_loop, py_loop);
+	if (loop_pt <= 0.F) continue;
+	const float phi  = std::atan2(py_loop, px_loop);
+	const float eta  = std::asinh(pz_loop/loop_pt);
+	const float dphi = std::remainder(phi_origin-phi, 2.F*M_PI);
+	const float deta = eta_origin-eta;
+	const float dr   = std::hypot(dphi, deta);
 	if(dr<iso_radius){
-	    sum_pt = sqrt(px_loop*px_loop+py_loop*py_loop) /1e3 + sum_pt;
+	    sum_pt = loop_pt /1e3 + sum_pt;
 	}
     }
     if(sum_pt/pT < 0.06) isIso = 1;
@@ -179,4 +180,3 @@ void Full_trajectory_info_data::SetParticleDepEnergy( const std::vector<float> &
     particle_dep_energy = _particle_dep_energies;
     
 }
-

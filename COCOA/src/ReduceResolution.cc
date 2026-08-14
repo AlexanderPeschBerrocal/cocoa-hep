@@ -1,4 +1,5 @@
 #include "ReduceResolution.hh"
+#include "Randomize.hh"
 
 
 ReduceResolution::ReduceResolution(std::vector<std::vector<std::vector<Cell>>> &CellArray_High, std::vector<std::vector<std::vector<Cell>>> &CellArray_Low)
@@ -29,7 +30,6 @@ void ReduceResolution::sum_pixels(std::vector<std::vector<std::vector<Cell>>> &C
         {
             for (int ilow_phi = 0; ilow_phi < Low_pixel.at(ilow_lay).at(0); ilow_phi++)
             {
-                // CellArray_Low.at(ilow_lay + init_low).at(ilow_eta).at(ilow_phi).set_noise_signal(gRandom->Gaus(0., config_var.low_resolution.layer_noise_ECAL.at(ilow_lay).at(0)) * MeV);
                 std::vector<Particle_dep_in_cell> ParticlesInClust;
                 double CellTotSignal = 0; //NoiseArray[it_x][it_y];
                 double CellChSignal = 0;  //CellTotSignal;
@@ -92,7 +92,8 @@ void ReduceResolution::apply_noise(std::vector<std::vector<std::vector<Cell>>> &
         {
             for (int iphi = 0; iphi < (int)CellArray.at(ilay).at(ieta).size(); iphi++)
             {
-                CellArray.at(ilay).at(ieta).at(iphi).set_noise_signal(gRandom->Gaus(0., config_var.low_resolution.layer_noise.at(ilay)) * MeV);
+                CellArray.at(ilay).at(ieta).at(iphi).set_noise_signal(
+                    G4RandGauss::shoot(0., config_var.low_resolution.layer_noise.at(ilay)) * MeV);
             }
         }
     }

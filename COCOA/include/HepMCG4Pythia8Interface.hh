@@ -64,14 +64,15 @@ public:
 	G4int GetVerboseLevel() const;
 
 	// call pyxxx
-	void CallPythiaInit(); //
+	bool CallPythiaInit();
 	void CallPythiaStat();
-	void CallPythiaReadString(G4String par);
+	bool CallPythiaReadString(const G4String &par);
+	bool ConfigureBeams(G4int beamPdg, G4int targetPdg, G4double eCMGeV);
 
 	Pythia8::Event GetPythiaObject();
 
 	// random numbers operations
-	void SetRandomSeed(G4int iseed);
+	bool SetRandomSeed(G4int iseed);
 	void PrintRandomStatus(std::ostream &ostr = G4cout) const; //
 	void PrintRandomStatus() const;
 

@@ -1,6 +1,7 @@
 {
     "Output_file_path":"./hadron_response_test.root",
     "Macro_file_path":"macro/Pythia8/ChargedPion_monochromatic_isotropic.in",
+    "Number_of_events": 100,
     "Type_of_running": "Standard",
     "run_hadron_test" : true,
     "Save_truth_particle_graph": false,
@@ -49,5 +50,18 @@
         "cluster_negative_energy_cells": false,
         "local_max_seed_energy": 400 
 
+    },
+    "Jet_parameters":
+    {
+        "algorithm": "antikt_algorithm",
+        "radius": 0.4,
+        "recombination_scheme": "E_scheme",
+        "ptmin": 0.0
+    },
+    "Fiducial_cuts":
+    {
+        "pt_min_gev": 1.0,
+        "eta_max": 3.0,
+        "dR_cut": -1.0
     }
 }

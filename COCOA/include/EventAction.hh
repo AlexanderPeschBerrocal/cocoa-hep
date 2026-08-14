@@ -43,6 +43,9 @@
 #include "Particle_flow_func.hh"
 #include "Particle_flow_data.hh"
 #include "Detector_analysis_var.hh"
+#include "Superclustering_data.hh"
+#include "Graph_construction_data.hh"
+#include "Jet_Builder_data.hh"
 
 class EventAction : public G4UserEventAction
 {

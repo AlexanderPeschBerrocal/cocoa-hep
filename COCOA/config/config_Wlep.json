@@ -1,6 +1,7 @@
 {
     "Output_file_path":"./Wlep.root",
     "Macro_file_path":"macro/Pythia8/W.in",
+    "Number_of_events": 2,
     "Type_of_running": "Standard",
     "run_hadron_test" : false,
     "Save_truth_particle_graph": false,
@@ -68,7 +69,7 @@
     },
     "Fiducial_cuts":
     {
-        "pt_min": 1.0,
+        "pt_min_gev": 1.0,
         "eta_max": 3.0,
         "dR_cut": -1
     }	

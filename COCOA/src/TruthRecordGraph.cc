@@ -1,5 +1,6 @@
 #include "TruthRecordGraph.hh"
 #include "OutputRunAction.hh"
+#include <limits>
 
 void TruthRecordGraph::clear()
 {
@@ -310,7 +311,8 @@ void TruthRecordGraph::fill_truth_graph()
 			std::vector<HepMC::GenParticle *>::iterator find_it = std::find(m_final_state_particles.begin(), m_final_state_particles.end(), particle);
 			if (find_it != m_final_state_particles.end())
 			{
-				node_final_state_idx = abs(std::distance(m_final_state_particles.end(), find_it)) - 1;
+				node_final_state_idx = std::distance(
+					m_final_state_particles.begin(), find_it);
 			}
 
 			node_pdg_id.push_back(particle->pdg_id());
@@ -320,6 +322,37 @@ void TruthRecordGraph::fill_truth_graph()
 			node_m.push_back(particle->momentum().m());
 			node_isfinal.push_back(particle->status());
 			final_idx.push_back(node_final_state_idx);
+
+			const float missing = std::numeric_limits<float>::quiet_NaN();
+			const HepMC::GenVertex *production = particle->production_vertex();
+			if (production)
+			{
+				const HepMC::FourVector position = production->position();
+				node_prodx.push_back(position.x());
+				node_prody.push_back(position.y());
+				node_prodz.push_back(position.z());
+			}
+			else
+			{
+				node_prodx.push_back(missing);
+				node_prody.push_back(missing);
+				node_prodz.push_back(missing);
+			}
+
+			const HepMC::GenVertex *decay = particle->end_vertex();
+			if (decay)
+			{
+				const HepMC::FourVector position = decay->position();
+				node_decx.push_back(position.x());
+				node_decy.push_back(position.y());
+				node_decz.push_back(position.z());
+			}
+			else
+			{
+				node_decx.push_back(missing);
+				node_decy.push_back(missing);
+				node_decz.push_back(missing);
+			}
 		}
 	}
 }

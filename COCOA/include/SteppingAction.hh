@@ -31,11 +31,11 @@
 #define H02_STEPPING_ACTION_H
 
 #include "G4UserSteppingAction.hh"
-#include "TRandom.h"
 #include "Config_reader_var.hh"
 #include "Cells_data.hh"
 #include "Full_trajectory_info_data.hh"
 #include "Detector_analysis_var.hh"
+#include <string>
 
 
 class SteppingAction : public G4UserSteppingAction {
@@ -57,9 +57,8 @@ public:
 		std::vector <long double> cone_max_length_flatten;
 		long double theta_min;
 		Geometry_definition geometry;
-		char* Name_creation(char *name, int low_layer, int high_layer);
+			G4String Name_creation(G4String name, int low_layer, int high_layer) const;
                     
 };
 
 #endif
-

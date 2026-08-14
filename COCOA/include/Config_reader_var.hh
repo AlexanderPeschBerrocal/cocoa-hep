@@ -93,6 +93,7 @@ public:
     std::string Output_file_path;
     std::string Macro_file_path;
     std::string Type_of_running;
+    int Number_of_events;
     bool Save_truth_particle_graph;
     bool Use_high_granularity;
     bool Skip_unuseable_tracks;

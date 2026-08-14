@@ -64,11 +64,11 @@ public:
 
   void SetNewValue(G4UIcommand* command, G4String newValues);
   G4String GetCurrentValue(G4UIcommand* command);
-  G4int GQparticle;
-  G4double MinEnergy;
-  G4double MaxEnergy;
-  G4double MinEta;
-  G4double MaxEta;
+  G4int GQparticle{22122212};
+  G4double MinEnergy{20.0};
+  G4double MaxEnergy{20.0};
+  G4double MinEta{-2.5};
+  G4double MaxEta{2.5};
 };
 
 #endif

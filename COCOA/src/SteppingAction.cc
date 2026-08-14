@@ -34,6 +34,7 @@
 #include "G4TrackStatus.hh"
 #include "G4VPhysicalVolume.hh"
 #include "G4RunManager.hh"
+#include "Randomize.hh"
 // #include "DataStorage.hh"
 #include "SteppingAction.hh"
 #include "DetectorConstruction.hh"
@@ -43,11 +44,17 @@
 #include <string>
 #include <algorithm>
 
-char* SteppingAction::Name_creation(char *name, int low_layer, int high_layer)
+G4String SteppingAction::Name_creation(G4String name, int low_layer, int high_layer) const
 {
-	name[4] = (low_layer+49);
-	name[6] = (high_layer+49);
-	return name;
+	std::string result(name.c_str());
+	auto position = result.find('N');
+	if (position == std::string::npos)
+		return name;
+	result.replace(position, 1, std::to_string(low_layer + 1));
+	position = result.find('N');
+	if (position != std::string::npos)
+		result.replace(position, 1, std::to_string(high_layer + 1));
+	return G4String(result.c_str());
 }
 SteppingAction::SteppingAction(Geometry_definition Geometry) : G4UserSteppingAction()
 {
@@ -106,14 +113,14 @@ int *SteppingAction::CellIndex(const char* cellName, double XPos, double YPos, d
 
 	
 	for( size_t iMainLayer = 0; iMainLayer < geometry.layer_inn_radius_ECAL.size(); ++iMainLayer ) {
-	    if ( isECAL && iMainLayer == mainLayerIndex ) {
+		    if ( isECAL && static_cast<int>(iMainLayer) == mainLayerIndex ) {
 			break;
 		}
 	    R_Bin += geometry.layer_inn_radius_ECAL[iMainLayer].size();
 	}
 	if ( !isECAL ) {
 	    for( size_t iMainLayer = 0; iMainLayer < geometry.layer_inn_radius_HCAL.size(); ++iMainLayer ) {
-		if ( iMainLayer == mainLayerIndex ) {
+		if ( static_cast<int>(iMainLayer) == mainLayerIndex ) {
 		    break;
 		}
 		R_Bin += geometry.layer_inn_radius_HCAL[iMainLayer].size();
@@ -232,10 +239,10 @@ void SteppingAction::UserSteppingAction(const G4Step *astep)
 			int num_sub_ecal_layrs = geometry.number_of_pixels_ECAL.at(iecal_low).size();
 			for (int iecal_high = 0; iecal_high < num_sub_ecal_layrs; iecal_high++)
 			{
-				if (lvol->GetName()==Name_creation(strdup("ECALN_N_forward_LV"),iecal_low,iecal_high)||
- 				lvol->GetName()==Name_creation(strdup("ECALN_N_back_LV"),iecal_low,iecal_high)||
-				lvol->GetName()==Name_creation(strdup("ECALN_N_Endcap_forward_LV"),iecal_low,iecal_high)||
-				lvol->GetName()==Name_creation(strdup("ECALN_N_Endcap_back_LV"),iecal_low,iecal_high))
+				if (lvol->GetName()==Name_creation("ECALN_N_forward_LV",iecal_low,iecal_high)||
+				lvol->GetName()==Name_creation("ECALN_N_back_LV",iecal_low,iecal_high)||
+				lvol->GetName()==Name_creation("ECALN_N_Endcap_forward_LV",iecal_low,iecal_high)||
+				lvol->GetName()==Name_creation("ECALN_N_Endcap_back_LV",iecal_low,iecal_high))
 				{
 					det_ana_obj.add_lengths(step_l/rad_l, step_l/int_l,lay_count + 1);
 					if_track = false;
@@ -250,10 +257,10 @@ void SteppingAction::UserSteppingAction(const G4Step *astep)
 			int num_sub_hcal_layers = geometry.number_of_pixels_HCAL.at(ihcal_low).size();
 			for (int ihcal_high = 0; ihcal_high < num_sub_hcal_layers; ihcal_high++)
 			{
-				if (lvol->GetName()==Name_creation(strdup("HCALN_N_forward_LV"),ihcal_low,ihcal_high)||
-				lvol->GetName()==Name_creation(strdup("HCALN_N_back_LV"),ihcal_low,ihcal_high)||
-				lvol->GetName()==Name_creation(strdup("HCALN_N_Endcap_forward_LV"),ihcal_low,ihcal_high)||
-				lvol->GetName()==Name_creation(strdup("HCALN_N_Endcap_back_LV"),ihcal_low,ihcal_high))
+				if (lvol->GetName()==Name_creation("HCALN_N_forward_LV",ihcal_low,ihcal_high)||
+				lvol->GetName()==Name_creation("HCALN_N_back_LV",ihcal_low,ihcal_high)||
+				lvol->GetName()==Name_creation("HCALN_N_Endcap_forward_LV",ihcal_low,ihcal_high)||
+				lvol->GetName()==Name_creation("HCALN_N_Endcap_back_LV",ihcal_low,ihcal_high))
 				{
 					det_ana_obj.add_lengths(step_l/rad_l, step_l/int_l,lay_count + 1);
 					if_track = false;
@@ -308,14 +315,13 @@ void SteppingAction::UserSteppingAction(const G4Step *astep)
 	// deposition is taken into account.
 	// ==================================================
 	float samplingFraction = ( volume_name.substr( 0, 1 ) == "E" ? config_json_var.samplingFraction_ECAL : config_json_var.samplingFraction_HCAL );
-	if ( gRandom->Uniform() > samplingFraction )
+	if ( G4UniformRand() > samplingFraction )
 	    edep = 0.0;
 	
 	if (foundTraj && edep > 0.)
 	{
 
-	        std::string volume_name = touch1->GetVolume()->GetName();
-	        int *Bin                = CellIndex( volume_name.c_str(),
+		        int *Bin                = CellIndex( volume_name.c_str(),
 						     PreStepPoint.x(),
 						     PreStepPoint.y(),
 						     PreStepPoint.z() );
@@ -378,4 +384,3 @@ void SteppingAction::UserSteppingAction(const G4Step *astep)
 		return;
 
 }
-

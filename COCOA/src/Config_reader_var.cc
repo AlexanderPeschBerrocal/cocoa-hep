@@ -11,6 +11,7 @@ Config_reader_var::Config_reader_var()  :
 {
     Output_file_path = "PFlowNtupleFile_QCD.root";
     Type_of_running  = "Standard";
+    Number_of_events = 1;
     Save_truth_particle_graph = false;
     Use_high_granularity = false;
     use_inner_detector = true;

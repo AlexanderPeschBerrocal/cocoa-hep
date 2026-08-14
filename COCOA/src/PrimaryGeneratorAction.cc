@@ -46,7 +46,8 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
 	: G4VUserPrimaryGeneratorAction()
 {
 	// default generator is particle gun.
-	fCurrentGenerator = fParticleGun = new G4ParticleGun();
+	fParticleGun_ = new G4ParticleGun(1);
+	fCurrentGenerator = fParticleGun = fParticleGun_;
 	//fCurrentGenerator= fParticleGun= new G4GeneralParticleSource();
 	fCurrentGeneratorName = "particleGun";
 	// fHepmcAscii = new HepMCG4AsciiReader();
@@ -56,8 +57,6 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
 	//#else
 	//  fPythiaGen= 0;
 	//#endif
-
-	fParticleGun_ = new G4ParticleGun(1);
 
 	fGentypeMap["particleGun"] = fParticleGun;
 	fGentypeMap["hepmcAscii"]  = fHepMCGen;
@@ -69,6 +68,9 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
 PrimaryGeneratorAction::~PrimaryGeneratorAction()
 {
 	delete fMessenger;
+	delete fPythiaGen;
+	delete fHepMCGen;
+	delete fParticleGun_;
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
@@ -88,8 +90,6 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
 			double pyPi_P_init = PtPi_P * sin(Phi0);
 			double pzPi_P_init = PtPi_P * sinh(eta1);
 
-			fParticleGun_ = nullptr;
-			fParticleGun_ = new G4ParticleGun(1);
 			auto particleDefinition1 = G4ParticleTable::GetParticleTable()->FindParticle("geantino"); //"pi0"geantino#chargedgeantino
 			fParticleGun_->SetParticleDefinition(particleDefinition1);
 			fParticleGun_->SetParticleMomentum(G4ThreeVector(pxPi_P_init, pyPi_P_init, pzPi_P_init));

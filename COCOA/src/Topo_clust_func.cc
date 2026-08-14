@@ -56,9 +56,15 @@ void Topo_clust_func::topoclustering(std::vector<Topo_clust> &topo_clusts_list)
     std::vector<Cell *> seed_list;
     std::vector<Cell *> local_max_list;
     std::vector<Cell *> share_list;
-    seed_list.reserve(50000000);
-    local_max_list.reserve(50000000);
-    share_list.reserve(50000000);
+    std::size_t number_of_cells = 0;
+    for (const auto &layer : Cells_Array)
+    {
+        for (const auto &eta_row : layer)
+            number_of_cells += eta_row.size();
+    }
+    seed_list.reserve(number_of_cells);
+    local_max_list.reserve(number_of_cells);
+    share_list.reserve(number_of_cells);
 
     find_seed_cells(seed_list);
     cluster_maker(seed_list);

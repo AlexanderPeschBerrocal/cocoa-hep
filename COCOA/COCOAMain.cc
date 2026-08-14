@@ -27,13 +27,9 @@
 #include <iostream>
 #include <fstream>
 #include <string> 
-#include "OutputRunAction.hh"
+#include <stdexcept>
+#include "ActionInitialization.hh"
 #include "DetectorConstruction.hh"
-#include "PrimaryGeneratorAction.hh"
-#include "EventAction.hh"
-#include "SteppingAction.hh"
-
-#include "TrackingAction.hh"
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 
@@ -68,10 +64,22 @@ static void show_usage(std::string name)
 			  << std::endl;
 }
 
+static bool apply_command(G4UImanager *ui_manager, const G4String &command)
+{
+	const G4int status = ui_manager->ApplyCommand(command);
+	if (status != 0)
+	{
+		G4cerr << "Geant4 command failed (status " << status << "): "
+			   << command << G4endl;
+		return false;
+	}
+	return true;
+}
+
 
 int main(int argc, char **argv)
 {
-	std::string path_to_config = "./config/config_lowres.json";
+	std::string path_to_config = "./config/config_default.json";
 	time_t systime = time(NULL);
 	G4long seed = (long)systime;
 	G4UIExecutive *ui = nullptr;
@@ -97,7 +105,7 @@ int main(int argc, char **argv)
 			std::cerr << "Option "<< arg <<" does not exist!" << std::endl;
 			show_usage(argv[0]);
 		}
-		return 0;
+		return 1;
 	}
 	else
 	{
@@ -135,7 +143,15 @@ int main(int argc, char **argv)
 				if (i + 1 < argc) // Make sure we aren't at the end of argv
 				{
 					i++;
-					seed = stoi(argv[i]);
+					try
+					{
+						seed = std::stol(argv[i]);
+					}
+					catch (const std::exception &)
+					{
+						std::cerr << "--seed requires a valid integer." << std::endl;
+						return 1;
+					}
 				}
 				else
 				{
@@ -148,7 +164,20 @@ int main(int argc, char **argv)
 				if (i + 1 < argc) // Make sure we aren't at the end of argv
 				{
 					i++;
-					nEvents = stoi(argv[i]);
+					try
+					{
+						nEvents = std::stoi(argv[i]);
+					}
+					catch (const std::exception &)
+					{
+						std::cerr << "--nevents requires a valid integer." << std::endl;
+						return 1;
+					}
+					if (nEvents <= 0)
+					{
+						std::cerr << "--nevents must be positive." << std::endl;
+						return 1;
+					}
 				}
 				else
 				{
@@ -196,12 +225,23 @@ int main(int argc, char **argv)
 		}
 	}
 	Config_reader_var &config_var = Config_reader_var::GetInstance();
-	Config_reader_func config_json_func(path_to_config, config_var);
+	try
+	{
+		Config_reader_func config_json_func(path_to_config, config_var);
+	}
+	catch (const std::exception &error)
+	{
+		G4cerr << "Configuration error: " << error.what() << G4endl;
+		return 1;
+	}
+	if (seed <= 0)
+	{
+		G4cerr << "Seed must be a positive integer" << G4endl;
+		return 1;
+	}
 	
 	//* choose the Random engine
 	CLHEP::HepRandom::setTheEngine(new CLHEP::RanecuEngine());
-	G4Random::setTheSeed(seed);
-
 	CLHEP::HepRandom::setTheSeed(seed);
 	// }
 	Geometry_definition geometry = config_var.low_resolution;
@@ -209,46 +249,28 @@ int main(int argc, char **argv)
 	{
 		geometry = config_var.high_resolution;
 	}
+	if (root_file_path.empty())
+	{
+		root_file_path = config_var.Output_file_path;
+		if (root_file_path.empty())
+		{
+			G4cerr << "root_file_path is not given!" << G4endl;
+			return 1;
+		}
+	}
 
 	G4RunManager *runManager = new G4RunManager;
 
 	// User Initialization classes (mandatory)
 	//
-	G4VUserDetectorConstruction *detector = new DetectorConstruction(geometry);
-	runManager->SetUserInitialization(detector);
+	runManager->SetUserInitialization(new DetectorConstruction(geometry));
 
 	//
-	G4VUserPhysicsList *physics = new FTFP_BERT;
-	runManager->SetUserInitialization(physics);
+	runManager->SetUserInitialization(new FTFP_BERT);
+	runManager->SetUserInitialization(new ActionInitialization(
+		geometry, root_file_path, config_var.Save_truth_particle_graph));
 
 	runManager->Initialize();
-
-	G4VUserPrimaryGeneratorAction *gen_action = new PrimaryGeneratorAction;
-	runManager->SetUserAction(gen_action);
-
-	if ((root_file_path == ""))
-	{
-		if (config_var.Output_file_path!="")
-			root_file_path = config_var.Output_file_path;
-		else
-		{
-			G4cout<<"root_file_path is not given!"<<G4endl;
-			return 1;
-		}
-	}
-	
-	OutputRunAction *outputrunaction = new OutputRunAction(root_file_path, config_var.Save_truth_particle_graph);
-	runManager->SetUserAction(outputrunaction);
-	//
-	G4UserEventAction *event_action = new EventAction();
-	runManager->SetUserAction(event_action);
-	//
-
-	G4UserTrackingAction *track_action = new TrackingAction;
-	runManager->SetUserAction(track_action);
-
-	G4UserSteppingAction *stepping_action = new SteppingAction(geometry);
-	runManager->SetUserAction(stepping_action);
 
 	G4VisManager *visManager = new G4VisExecutive;
 	visManager->Initialize();
@@ -271,42 +293,46 @@ int main(int argc, char **argv)
 		}
 		
 		visManager->SetVerboseLevel("quiet");
-		UImanager->ApplyCommand("/generator/pythia8/setSeed " + std::to_string(seed));
-		//UImanager->ApplyCommand(G4String("/control/execute ") + macro_file_path);
+		const G4long pythia_seed = 1 + (seed % 899999999L);
+		if (!apply_command(UImanager, "/generator/pythia8/setSeed " +
+			std::to_string(pythia_seed)))
+			return 1;
+		const int number_of_events = nEvents > 0 ? nEvents : config_var.Number_of_events;
+		if (!apply_command(UImanager, "/control/alias numberOfEvents " +
+			std::to_string(number_of_events)))
+			return 1;
 
-		ifstream filestream(macro_file_path);
-		string line;
-
-		//Parse the file line by line in order to overwrite with user input (e.g. nEvents)
-		while ( std::getline(filestream, line) )
+		if (input_file_path.empty())
 		{
-			if      (line.empty()) continue;
-			else if ( (nEvents > 0) && (line.find( "/run/beamOn" ) != std::string::npos) )
+			if (!apply_command(UImanager, G4String("/control/execute ") + macro_file_path))
+				return 1;
+		}
+		else
+		{
+			std::ifstream filestream(macro_file_path);
+			if (!filestream.is_open())
 			{
-				runManager->BeamOn(nEvents);
+				G4cerr << "Cannot open macro file: " << macro_file_path << G4endl;
+				return 1;
 			}
-			else if ( (input_file_path != "") && (line.find("/generator/hepmcAscii/open") != std::string::npos) )
+			std::string line;
+			while (std::getline(filestream, line))
 			{
-				if (input_file_path.find(".hmc") != std::string::npos)
-				{
-					UImanager->ApplyCommand(G4String("/generator/hepmcAscii/open " + input_file_path));
-				}
-				else
-				{
-					G4cout << "Input file is not a HepMC file (.hmc)!" << G4endl;
+				const std::size_t first = line.find_first_not_of(" \t\r");
+				if (first == std::string::npos || line[first] == '#')
+					continue;
+				G4String command = line.substr(first);
+				if (command.find("/generator/hepmcAscii/open") == 0)
+					command = "/generator/hepmcAscii/open " + input_file_path;
+				if (!apply_command(UImanager, command))
 					return 1;
-				}
-			}
-			else if (line.at(0)!='#')
-			{
-				G4cout << "Applying command: " <<  line << G4endl;
-				UImanager->ApplyCommand(G4String(line));
 			}
 		}
 	}
 	else
 	{ // interactive mode : define UI session
-		UImanager->ApplyCommand("/control/execute init_vis.mac");
+		if (!apply_command(UImanager, "/control/execute init_vis.mac"))
+			return 1;
 		// if (ui->IsGUI())
 		// {
 		// 	UImanager->ApplyCommand("/control/execute gui.mac");

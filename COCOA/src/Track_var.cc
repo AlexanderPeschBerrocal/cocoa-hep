@@ -1,7 +1,7 @@
 #include "Track_var.hh"
-#include "TRandom.h"
+#include "Randomize.hh"
 
-Track_struct::Track_struct(){};
+Track_struct::Track_struct(){}
 
 Track_struct::Track_struct(const Track_struct &orig) = default;
 
@@ -53,11 +53,11 @@ void Track_struct::smearing()
     float sigma_qp = csv.hits_sigma_QP.GetBinContent(csv.hits_sigma_QP.FindBin(pt));
     float sigma_theta = csv.hits_sigma_Theta.GetBinContent(csv.hits_sigma_Theta.FindBin(pt));
     float sigma_phi = csv.hits_sigma_Phi.GetBinContent(csv.hits_sigma_Phi.FindBin(pt));
-    a0 += sigma_a0 * gRandom->Gaus(0, 1);
-    z0 += sigma_z0 * gRandom->Gaus(0, 1);
-    q_p += sigma_qp * gRandom->Gaus(0, 1);
-    theta += sigma_theta * gRandom->Gaus(0, 1);
-    phiHelix += sigma_phi * gRandom->Gaus(0, 1);
+    a0 += sigma_a0 * G4RandGauss::shoot(0., 1.);
+    z0 += sigma_z0 * G4RandGauss::shoot(0., 1.);
+    q_p += sigma_qp * G4RandGauss::shoot(0., 1.);
+    theta += sigma_theta * G4RandGauss::shoot(0., 1.);
+    phiHelix += sigma_phi * G4RandGauss::shoot(0., 1.);
     phiHelix = phiHelix > M_PI ? phiHelix - 2 * M_PI : phiHelix < -M_PI ? phiHelix + 2 * M_PI : phiHelix;
 }
 void Track_struct::IsProductInsideRadius()
@@ -77,7 +77,7 @@ void Track_struct::IsTrackReconstructed()
     // auto runData
     // 	= static_cast<DataStorage*>(G4RunManager::GetRunManager()->GetNonConstCurrentRun());
     Is_track_reconstracted = true;
-    float randnumb = gRandom->Uniform(1);
+    float randnumb = G4UniformRand();
 
     float effreco = csv.hist_recon_eff.GetBinContent(csv.hist_recon_eff.FindBin(pt));
     if (randnumb < effreco)

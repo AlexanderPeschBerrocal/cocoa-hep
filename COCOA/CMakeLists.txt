@@ -14,11 +14,42 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 # to build a batch mode only executable
 #
 option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" ON)
+get_cmake_property(_cocoa_cache_vars CACHE_VARIABLES)
+foreach(_cocoa_cache_var ${_cocoa_cache_vars})
+  if(_cocoa_cache_var MATCHES "^(Geant4|Qt5|CLHEP|VecGeom|XercesC|Vc|Vdt|VDT|TBB)_")
+    unset(${_cocoa_cache_var} CACHE)
+  endif()
+endforeach()
+if(DEFINED ENV{GEANT4_DIR} AND EXISTS "$ENV{GEANT4_DIR}/Geant4Config.cmake")
+  set(Geant4_DIR "$ENV{GEANT4_DIR}" CACHE PATH "Geant4 CMake package directory" FORCE)
+elseif(DEFINED ENV{GEANT4_HOME} AND EXISTS "$ENV{GEANT4_HOME}/lib64/cmake/Geant4/Geant4Config.cmake")
+  set(Geant4_DIR "$ENV{GEANT4_HOME}/lib64/cmake/Geant4" CACHE PATH "Geant4 CMake package directory" FORCE)
+endif()
+if(DEFINED ENV{VDT_INCLUDE_DIR})
+  set(VDT_INCLUDE_DIR "$ENV{VDT_INCLUDE_DIR}" CACHE PATH "Vdt include directory" FORCE)
+endif()
+if(DEFINED ENV{VDT_LIBRARY})
+  set(VDT_LIBRARY "$ENV{VDT_LIBRARY}" CACHE FILEPATH "Vdt library" FORCE)
+endif()
+if(DEFINED ENV{TBB_DIR} AND EXISTS "$ENV{TBB_DIR}/TBBConfig.cmake")
+  set(TBB_DIR "$ENV{TBB_DIR}" CACHE PATH "TBB CMake package directory" FORCE)
+endif()
+list(APPEND CMAKE_PREFIX_PATH
+  $ENV{GEANT4_HOME}
+  $ENV{CLHEP_HOME}
+  $ENV{VECGEOM_HOME}
+  $ENV{XERCESC_HOME}
+  $ENV{VC_HOME}
+  $ENV{VDT_HOME}
+  $ENV{TBB_HOME}
+  $ENV{Qt5_DIR}/..
+)
 if(WITH_GEANT4_UIVIS)
   find_package(Geant4 REQUIRED ui_all vis_all)
 else()
   find_package(Geant4 REQUIRED)
 endif()
+find_package(TBB REQUIRED)
 
 find_package( FastJet REQUIRED)
 
@@ -42,6 +73,19 @@ find_package(HepMC REQUIRED)
 #----------------------------------------------------------------------------
 # Find ROOT (required package)
 #
+get_cmake_property(_cocoa_cache_vars CACHE_VARIABLES)
+foreach(_cocoa_cache_var ${_cocoa_cache_vars})
+  if(_cocoa_cache_var MATCHES "^ROOT_")
+    unset(${_cocoa_cache_var} CACHE)
+  endif()
+endforeach()
+if(DEFINED ENV{ROOT_DIR} AND EXISTS "$ENV{ROOT_DIR}/ROOTConfig.cmake")
+  set(ROOT_DIR "$ENV{ROOT_DIR}" CACHE PATH "ROOT CMake package directory" FORCE)
+elseif(DEFINED ENV{ROOTSYS} AND EXISTS "$ENV{ROOTSYS}/cmake/ROOTConfig.cmake")
+  set(ROOT_DIR "$ENV{ROOTSYS}/cmake" CACHE PATH "ROOT CMake package directory" FORCE)
+elseif(EXISTS "/usr/share/root/cmake/ROOTConfig.cmake")
+  set(ROOT_DIR "/usr/share/root/cmake" CACHE PATH "ROOT CMake package directory" FORCE)
+endif()
 list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 find_package(ROOT REQUIRED COMPONENTS RIO Net)
 include("${ROOT_USE_FILE}")
@@ -53,7 +97,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 ROOT_GENERATE_DICTIONARY(G__Event LINKDEF LinkDef.h )# H02RunAction.hh
 #---Create a shared library with geneated dictionary
 add_library(Event SHARED G__Event.cxx)
-target_link_libraries(Event ${ROOT_LIBRARIES})
+target_link_libraries(Event ${ROOT_LIBRARIES} TBB::tbb)
 
 
 #----------------------------------------------------------------------------
@@ -108,6 +152,7 @@ target_link_libraries(COCOA ${Geant4_LIBRARIES}
                       # jsoncpp_static
                       #HepMCdict
                       Event
+                      TBB::tbb
                       #clangBasic
                       #clangLex
                       #clangTooling
@@ -163,4 +208,3 @@ endforeach()
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
 install(TARGETS COCOA DESTINATION bin)
-

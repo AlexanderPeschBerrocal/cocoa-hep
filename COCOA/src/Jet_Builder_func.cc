@@ -4,10 +4,25 @@ void Jet_Builder_func::build_jets(std::vector<fastjet::PseudoJet> &input_jets,
 				  Jet_Builder_data &jet_data,
 				  Jet_parameters jet_par)
 {
-	fastjet::JetDefinition jet_def = fastjet::JetDefinition(algorithm(jet_par.algorithm),
-								jet_par.radius,
-								recombination_scheme(jet_par.recombination_scheme),
-								fastjet::Best);
+	const fastjet::JetAlgorithm jet_algorithm = algorithm(jet_par.algorithm);
+	const fastjet::RecombinationScheme scheme =
+		recombination_scheme(jet_par.recombination_scheme);
+	fastjet::JetDefinition jet_def;
+	if (jet_algorithm == fastjet::ee_kt_algorithm)
+	{
+		jet_def = fastjet::JetDefinition(jet_algorithm, scheme, fastjet::Best);
+	}
+	else if (jet_algorithm == fastjet::genkt_algorithm ||
+			 jet_algorithm == fastjet::ee_genkt_algorithm)
+	{
+		jet_def = fastjet::JetDefinition(jet_algorithm, jet_par.radius,
+			jet_par.power, scheme, fastjet::Best);
+	}
+	else
+	{
+		jet_def = fastjet::JetDefinition(jet_algorithm, jet_par.radius,
+			scheme, fastjet::Best);
+	}
 	cs = new fastjet::ClusterSequence(input_jets, jet_def);
 	jet_data.jets = sorted_by_pt(cs->inclusive_jets(jet_par.ptmin));
 	jet_data.set_n_constituents( input_jets.size() );
@@ -54,7 +69,5 @@ fastjet::RecombinationScheme Jet_Builder_func::recombination_scheme(std::string 
 		Scheme = fastjet::WTA_pt_scheme;
 	else if (reco == "WTA_modp_scheme")
 		Scheme = fastjet::WTA_modp_scheme;
-	else if (reco == "external_scheme")
-		Scheme = fastjet::external_scheme;
 	return Scheme;
 }

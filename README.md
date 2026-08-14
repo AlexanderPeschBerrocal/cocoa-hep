@@ -38,7 +38,7 @@ Then in the `COCOA` directory run the following commands:
 ```
 mkdir build
 cd build
-cmake ../
+cmake ..
 make -j<# cpu cores>
 cd ..
 ```

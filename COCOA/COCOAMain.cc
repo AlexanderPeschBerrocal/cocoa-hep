@@ -58,7 +58,7 @@ static void show_usage(std::string name)
 			  << "\t--output (-o) <str>\t path (incl. name) of output ROOT file to be written (can be set in json configuration file)\n"
 			  << "\t--input (-i) <str>\t path to HepMC (.hmc) input file (overrides the default path set in the HepMC macro file)\n"
 			  << "\t--seed (-s) <int>\t set random seed\n"
-			  << "\t--nevents (-n) <int>\t number of events to generate (default is taken from macro).\n"
+			  << "\t--nevents (-n) <int>\t override the number of events requested by the macro\n"
 			  << "\t--help (-h)\t show this message\n"
 			  << "no <option(s)> will call UI interactive command submission\n" 
 			  << std::endl;
@@ -72,6 +72,45 @@ static bool apply_command(G4UImanager *ui_manager, const G4String &command)
 		G4cerr << "Geant4 command failed (status " << status << "): "
 			   << command << G4endl;
 		return false;
+	}
+	return true;
+}
+
+static bool starts_with_command(const std::string &line, const std::string &command)
+{
+	return line.compare(0, command.size(), command) == 0 &&
+		(line.size() == command.size() ||
+		 line[command.size()] == ' ' || line[command.size()] == '\t');
+}
+
+static bool execute_macro_with_overrides(G4UImanager *ui_manager,
+										 const std::string &macro_file_path,
+										 const std::string &input_file_path,
+										 int number_of_events)
+{
+	std::ifstream filestream(macro_file_path);
+	if (!filestream.is_open())
+	{
+		G4cerr << "Cannot open macro file: " << macro_file_path << G4endl;
+		return false;
+	}
+
+	std::string line;
+	while (std::getline(filestream, line))
+	{
+		const std::size_t first = line.find_first_not_of(" \t\r");
+		if (first == std::string::npos || line[first] == '#')
+			continue;
+
+		G4String command = line.substr(first);
+		if (number_of_events > 0 && starts_with_command(command, "/run/beamOn"))
+			command = "/run/beamOn " + std::to_string(number_of_events);
+		else if (!input_file_path.empty() &&
+				 starts_with_command(command, "/generator/hepmcAscii/open"))
+			command = "/generator/hepmcAscii/open " + input_file_path;
+
+		if (!apply_command(ui_manager, command))
+			return false;
 	}
 	return true;
 }
@@ -145,7 +184,10 @@ int main(int argc, char **argv)
 					i++;
 					try
 					{
-						seed = std::stol(argv[i]);
+						std::size_t parsed = 0;
+						seed = std::stol(argv[i], &parsed);
+						if (parsed != std::string(argv[i]).size())
+							throw std::invalid_argument("trailing characters");
 					}
 					catch (const std::exception &)
 					{
@@ -166,7 +208,10 @@ int main(int argc, char **argv)
 					i++;
 					try
 					{
-						nEvents = std::stoi(argv[i]);
+						std::size_t parsed = 0;
+						nEvents = std::stoi(argv[i], &parsed);
+						if (parsed != std::string(argv[i]).size())
+							throw std::invalid_argument("trailing characters");
 					}
 					catch (const std::exception &)
 					{
@@ -302,31 +347,16 @@ int main(int argc, char **argv)
 			std::to_string(number_of_events)))
 			return 1;
 
-		if (input_file_path.empty())
+		if (input_file_path.empty() && nEvents <= 0)
 		{
 			if (!apply_command(UImanager, G4String("/control/execute ") + macro_file_path))
 				return 1;
 		}
 		else
 		{
-			std::ifstream filestream(macro_file_path);
-			if (!filestream.is_open())
-			{
-				G4cerr << "Cannot open macro file: " << macro_file_path << G4endl;
+			if (!execute_macro_with_overrides(UImanager, macro_file_path,
+					input_file_path, nEvents))
 				return 1;
-			}
-			std::string line;
-			while (std::getline(filestream, line))
-			{
-				const std::size_t first = line.find_first_not_of(" \t\r");
-				if (first == std::string::npos || line[first] == '#')
-					continue;
-				G4String command = line.substr(first);
-				if (command.find("/generator/hepmcAscii/open") == 0)
-					command = "/generator/hepmcAscii/open " + input_file_path;
-				if (!apply_command(UImanager, command))
-					return 1;
-			}
 		}
 	}
 	else

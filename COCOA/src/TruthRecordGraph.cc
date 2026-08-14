@@ -77,15 +77,18 @@ bool TruthRecordGraph::is_parent_same(HepMC::GenParticle *particle)
 	return false;
 }
 
-HepMC::GenParticle *TruthRecordGraph::find_next_level_parent(HepMC::GenParticle *particle)
+HepMC::GenParticle *TruthRecordGraph::find_next_level_parent(
+	HepMC::GenParticle *particle, double length_to_mm)
 {
+	if (!particle->production_vertex())
+		return particle;
 
 	for (HepMC::GenVertex::particle_iterator
 			 parent = particle->production_vertex()->particles_begin(HepMC::parents);
 		 parent != particle->production_vertex()->particles_end(HepMC::parents); ++parent)
 	{
 
-		float r = prod_radius(*parent);
+		const double r = prod_radius(*parent, length_to_mm);
 
 		if (r < m_max_radius)
 		{
@@ -93,28 +96,31 @@ HepMC::GenParticle *TruthRecordGraph::find_next_level_parent(HepMC::GenParticle 
 		}
 		else
 		{
-			return find_next_level_parent(*parent);
+			return find_next_level_parent(*parent, length_to_mm);
 		}
 	}
-	return nullptr;
+	return particle;
 }
 
-float TruthRecordGraph::prod_radius(HepMC::GenParticle *particle)
+double TruthRecordGraph::prod_radius(HepMC::GenParticle *particle, double length_to_mm)
 {
+	if (!particle->production_vertex())
+		return 0.;
 	HepMC::FourVector pos_start = (particle)->production_vertex()->position();
 	//HepMC::FourVector pos_end = (particle)->end_vertex()->position();
 
-	float r = TMath::Sqrt(pos_start.x() * pos_start.x() + pos_start.y() * pos_start.y());
-	return r;
+	return TMath::Sqrt(pos_start.x() * pos_start.x() +
+		pos_start.y() * pos_start.y()) * length_to_mm;
 }
 
-HepMC::GenParticle *TruthRecordGraph::check_prod_location(HepMC::GenParticle *particle)
+HepMC::GenParticle *TruthRecordGraph::check_prod_location(
+	HepMC::GenParticle *particle, double length_to_mm)
 {
-	float r = prod_radius(particle);
+	const double r = prod_radius(particle, length_to_mm);
 
 	if (r > m_max_radius)
 	{
-		return find_next_level_parent(particle);
+		return find_next_level_parent(particle, length_to_mm);
 	}
 	return particle;
 }
@@ -265,7 +271,7 @@ void TruthRecordGraph::find_daughters(HepMC::GenParticle *parent, std::vector<He
 	}
 }
 
-void TruthRecordGraph::fill_truth_graph()
+void TruthRecordGraph::fill_truth_graph(double momentum_to_mev, double length_to_mm)
 {
 	size_t n_particles = m_interesting_particles.size();
 	for (size_t part_i = 0; part_i < n_particles; part_i++)
@@ -318,8 +324,8 @@ void TruthRecordGraph::fill_truth_graph()
 			node_pdg_id.push_back(particle->pdg_id());
 			node_phi.push_back(particle->momentum().phi());
 			node_eta.push_back(particle->momentum().eta());
-			node_pt.push_back(particle->momentum().perp());
-			node_m.push_back(particle->momentum().m());
+			node_pt.push_back(particle->momentum().perp() * momentum_to_mev);
+			node_m.push_back(particle->momentum().m() * momentum_to_mev);
 			node_isfinal.push_back(particle->status());
 			final_idx.push_back(node_final_state_idx);
 
@@ -328,9 +334,9 @@ void TruthRecordGraph::fill_truth_graph()
 			if (production)
 			{
 				const HepMC::FourVector position = production->position();
-				node_prodx.push_back(position.x());
-				node_prody.push_back(position.y());
-				node_prodz.push_back(position.z());
+				node_prodx.push_back(position.x() * length_to_mm);
+				node_prody.push_back(position.y() * length_to_mm);
+				node_prodz.push_back(position.z() * length_to_mm);
 			}
 			else
 			{
@@ -343,9 +349,9 @@ void TruthRecordGraph::fill_truth_graph()
 			if (decay)
 			{
 				const HepMC::FourVector position = decay->position();
-				node_decx.push_back(position.x());
-				node_decy.push_back(position.y());
-				node_decz.push_back(position.z());
+				node_decx.push_back(position.x() * length_to_mm);
+				node_decy.push_back(position.y() * length_to_mm);
+				node_decz.push_back(position.z() * length_to_mm);
 			}
 			else
 			{

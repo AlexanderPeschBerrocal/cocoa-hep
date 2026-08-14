@@ -72,6 +72,7 @@ struct Jet_parameters
     std::string recombination_scheme;
     long double radius;
     long double ptmin;
+    long double power;
 };
 struct Fiducial_cuts
 {

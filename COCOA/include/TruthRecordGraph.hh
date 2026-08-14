@@ -26,7 +26,7 @@ public:
         return fsp;
     };
     void clear();
-    void fill_truth_graph();
+    void fill_truth_graph(double momentum_to_mev = 1., double length_to_mm = 1.);
     void set_tree_branches(TTree *outTree);
 
     bool isCharmHadron(int pdgid);
@@ -38,9 +38,9 @@ public:
     void clean_daugthers(   std::vector<HepMC::GenParticle *> &interesting_particles,
                             std::vector<int> &all_daughters, std::vector<int> &direct_daughters);
     void find_daughters(HepMC::GenParticle *parent, std::vector<HepMC::GenParticle *> &interesting_particles, std::vector<int> &direct_daughters);
-    HepMC::GenParticle *check_prod_location(HepMC::GenParticle *particle);
-    HepMC::GenParticle *find_next_level_parent(HepMC::GenParticle *particle);
-    float prod_radius(HepMC::GenParticle *particle);
+    HepMC::GenParticle *check_prod_location(HepMC::GenParticle *particle, double length_to_mm = 1.);
+    HepMC::GenParticle *find_next_level_parent(HepMC::GenParticle *particle, double length_to_mm = 1.);
+    double prod_radius(HepMC::GenParticle *particle, double length_to_mm = 1.);
 
     std::vector<int> CharmHadrons = {   411, 421, 10411, 10421, 413, 423, 10413, 10423, 20413, 20423, 415, 425, 431, 10431, 433, 10433, 20433, 435,
                                         4122, 4222, 4212, 4112, 4224, 4214, 4114, 4232, 4132, 4322, 4312, 4324, 4314, 4332, 4334, 4412, 4422, 4414,

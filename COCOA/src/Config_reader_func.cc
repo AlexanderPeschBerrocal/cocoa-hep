@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <limits>
 #include <stdexcept>
 #include <set>
 
@@ -15,6 +16,50 @@ void requireNumericArray(const Json::Value &value, const std::string &name)
     {
         if (!value[i].isNumeric())
             throw std::runtime_error(name + " must contain only numbers");
+    }
+}
+
+bool isPositiveInt(const Json::Value &value)
+{
+    if (value.isInt())
+        return value.asInt() > 0;
+    if (value.isUInt())
+        return value.asUInt() > 0 &&
+               value.asUInt() <= static_cast<unsigned int>(std::numeric_limits<int>::max());
+    return false;
+}
+
+void requirePositiveIntegerArray(const Json::Value &value, const std::string &name)
+{
+    if (!value.isArray() || value.empty())
+        throw std::runtime_error(name + " must be a non-empty array");
+    for (Json::ArrayIndex i = 0; i < value.size(); ++i)
+    {
+        if (!isPositiveInt(value[i]))
+            throw std::runtime_error(name + " must contain only positive integers");
+    }
+}
+
+void requireBoundedNumericArray(const Json::Value &value, const std::string &name,
+                                double lower_bound, bool allow_lower_bound)
+{
+    requireNumericArray(value, name);
+    for (Json::ArrayIndex i = 0; i < value.size(); ++i)
+    {
+        const double number = value[i].asDouble();
+        if (allow_lower_bound ? number < lower_bound : number <= lower_bound)
+            throw std::runtime_error(name + " contains an out-of-range value");
+    }
+}
+
+void requireNonEmptyStringArray(const Json::Value &value, const std::string &name)
+{
+    if (!value.isArray() || value.empty())
+        throw std::runtime_error(name + " must be a non-empty array");
+    for (Json::ArrayIndex i = 0; i < value.size(); ++i)
+    {
+        if (!value[i].isString() || value[i].asString().empty())
+            throw std::runtime_error(name + " must contain only non-empty strings");
     }
 }
 
@@ -61,6 +106,9 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     
     config_var.Output_file_path = configs.get("Output_file_path", "").asString();
     config_var.Type_of_running = configs.get("Type_of_running", "GeometryCheck").asString();
+    if (!configs["Number_of_events"].isNull() &&
+        !isPositiveInt(configs["Number_of_events"]))
+        throw std::runtime_error("Number_of_events must be a positive integer");
     config_var.Number_of_events = configs.get("Number_of_events", 1).asInt();
     config_var.Macro_file_path = configs.get("Macro_file_path", "").asString();
     config_var.Save_truth_particle_graph = configs.get("Save_truth_particle_graph", false).asBool();
@@ -94,25 +142,16 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     const Json::Value &width_hcal = granularity["Width_of_HCAL_layers_in_Lambda_int"];
     const Json::Value &noise_ecal = geometry_config["Noise_in_ECAL"];
     const Json::Value &noise_hcal = geometry_config["Noise_in_HCAL"];
-    requireNumericArray(pixels_ecal, "Number_of_pixels_ECAL");
-    requireNumericArray(pixels_hcal, "Number_of_pixels_HCAL");
-    requireNumericArray(width_ecal, "Width_of_ECAL_layers_in_X0");
-    requireNumericArray(width_hcal, "Width_of_HCAL_layers_in_Lambda_int");
-    requireNumericArray(noise_ecal, "Noise_in_ECAL");
-    requireNumericArray(noise_hcal, "Noise_in_HCAL");
+    requirePositiveIntegerArray(pixels_ecal, "Number_of_pixels_ECAL");
+    requirePositiveIntegerArray(pixels_hcal, "Number_of_pixels_HCAL");
+    requireBoundedNumericArray(width_ecal, "Width_of_ECAL_layers_in_X0", 0., false);
+    requireBoundedNumericArray(width_hcal, "Width_of_HCAL_layers_in_Lambda_int", 0., false);
+    requireBoundedNumericArray(noise_ecal, "Noise_in_ECAL", 0., true);
+    requireBoundedNumericArray(noise_hcal, "Noise_in_HCAL", 0., true);
     requireSameSize(pixels_ecal, width_ecal, "ECAL pixels and widths");
     requireSameSize(pixels_ecal, noise_ecal, "ECAL pixels and noise");
     requireSameSize(pixels_hcal, width_hcal, "HCAL pixels and widths");
     requireSameSize(pixels_hcal, noise_hcal, "HCAL pixels and noise");
-
-    for (const auto *pixels : {&pixels_ecal, &pixels_hcal})
-    {
-        for (Json::ArrayIndex i = 0; i < pixels->size(); ++i)
-        {
-            if ((*pixels)[i].asInt() <= 0)
-                throw std::runtime_error("Detector pixel counts must be positive");
-        }
-    }
 
     const double sampling_ecal = geometry_config.get("SamplingFraction_ECAL", 0.02).asDouble();
     const double sampling_hcal = geometry_config.get("SamplingFraction_HCAL", 0.02).asDouble();
@@ -126,15 +165,14 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     requireSameSize(geometry_config["Material_for_HCAL"],
                     geometry_config["HCAL_material_mixing_in_volume_proportion"],
                     "HCAL materials and mixing proportions");
-    if (!geometry_config["Material_for_ECAL"].isArray() ||
-        geometry_config["Material_for_ECAL"].empty() ||
-        !geometry_config["Material_for_HCAL"].isArray() ||
-        geometry_config["Material_for_HCAL"].empty())
-        throw std::runtime_error("ECAL and HCAL each require at least one material");
-    requireNumericArray(geometry_config["ECAL_material_mixing_in_volume_proportion"],
-                        "ECAL material proportions");
-    requireNumericArray(geometry_config["HCAL_material_mixing_in_volume_proportion"],
-                        "HCAL material proportions");
+    requireNonEmptyStringArray(geometry_config["Material_for_ECAL"],
+                               "Material_for_ECAL");
+    requireNonEmptyStringArray(geometry_config["Material_for_HCAL"],
+                               "Material_for_HCAL");
+    requireBoundedNumericArray(geometry_config["ECAL_material_mixing_in_volume_proportion"],
+                               "ECAL material proportions", 0., false);
+    requireBoundedNumericArray(geometry_config["HCAL_material_mixing_in_volume_proportion"],
+                               "HCAL material proportions", 0., false);
 
     if (config_var.Use_high_granularity)
     {
@@ -147,6 +185,20 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
         requireMatchingNumeric2D(high["Number_of_pixels_HCAL"],
                                  high["Width_of_HCAL_layers_in_Lambda_int"],
                                  "high-granularity HCAL pixels and widths");
+        for (Json::ArrayIndex i = 0; i < high["Number_of_pixels_ECAL"].size(); ++i)
+        {
+            requirePositiveIntegerArray(high["Number_of_pixels_ECAL"][i],
+                                        "high-granularity ECAL pixels");
+            requireBoundedNumericArray(high["Width_of_ECAL_layers_in_X0"][i],
+                                       "high-granularity ECAL widths", 0., false);
+        }
+        for (Json::ArrayIndex i = 0; i < high["Number_of_pixels_HCAL"].size(); ++i)
+        {
+            requirePositiveIntegerArray(high["Number_of_pixels_HCAL"][i],
+                                        "high-granularity HCAL pixels");
+            requireBoundedNumericArray(high["Width_of_HCAL_layers_in_Lambda_int"][i],
+                                       "high-granularity HCAL widths", 0., false);
+        }
         requireSameSize(high["Number_of_pixels_ECAL"], pixels_ecal,
                         "low- and high-granularity ECAL layers");
         requireSameSize(high["Number_of_pixels_HCAL"], pixels_hcal,
@@ -164,12 +216,16 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
         const std::set<std::string> schemes = {
             "E_scheme", "pt_scheme", "pt2_scheme", "Et_scheme", "Et2_scheme",
             "BIpt_scheme", "BIpt2_scheme", "WTA_pt_scheme",
-            "WTA_modp_scheme", "external_scheme"};
+            "WTA_modp_scheme"};
         if (!jets.isObject() || algorithms.count(jets["algorithm"].asString()) == 0 ||
             schemes.count(jets["recombination_scheme"].asString()) == 0 ||
             !jets["radius"].isNumeric() || jets["radius"].asDouble() <= 0. ||
             !jets["ptmin"].isNumeric() || jets["ptmin"].asDouble() < 0.)
             throw std::runtime_error("Jet_parameters is missing or invalid");
+        const std::string algorithm = jets["algorithm"].asString();
+        if ((algorithm == "genkt_algorithm" || algorithm == "ee_genkt_algorithm") &&
+            !jets["power"].isNumeric())
+            throw std::runtime_error("Generalised-kt algorithms require a numeric Jet_parameters.power");
         if (!configs["Fiducial_cuts"].isObject())
             throw std::runtime_error("Standard runs require Fiducial_cuts");
     }
@@ -201,6 +257,7 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     config_var.jet_parameter.recombination_scheme = configs["Jet_parameters"]["recombination_scheme"].asString();
     config_var.jet_parameter.ptmin = configs["Jet_parameters"]["ptmin"].asDouble();
     config_var.jet_parameter.radius = configs["Jet_parameters"]["radius"].asDouble();
+    config_var.jet_parameter.power = configs["Jet_parameters"].get("power", 0.).asDouble();
 
     config_var.fiducial_cuts.pt_min = configs["Fiducial_cuts"].get( "pt_min_gev", 1.0 ).asFloat();
     config_var.fiducial_cuts.eta_max = configs["Fiducial_cuts"].get( "eta_max", 3.0 ).asFloat();
@@ -409,11 +466,23 @@ G4Material *Config_reader_func::Material_build(std::string name)
         G4Material *element = nistManager->FindOrBuildMaterial(sMaterial_vector[imat_ecal]);
         if (!element)
         {
+            const Json::Value &custom =
+                configs["Geometry_definition"]["Characteristic_of_custom_material_for_" + name];
+            if (!custom.isArray() || icustom_element >= static_cast<int>(custom.size()) ||
+                !custom[icustom_element].isArray() || custom[icustom_element].size() != 3 ||
+                !custom[icustom_element][0].isNumeric() ||
+                !custom[icustom_element][1].isNumeric() ||
+                !custom[icustom_element][2].isNumeric() ||
+                custom[icustom_element][0].asDouble() <= 0. ||
+                custom[icustom_element][1].asDouble() <= 0. ||
+                custom[icustom_element][2].asDouble() <= 0.)
+                throw std::runtime_error("Custom material " + sMaterial_vector[imat_ecal] +
+                                         " requires positive [Z, A, density] values");
             element = new G4Material(sMaterial_vector[imat_ecal], 
-                                     z = configs["Geometry_definition"]["Characteristic_of_custom_material_for_" + name][icustom_element][0].asDouble(),
-                                     a = configs["Geometry_definition"]["Characteristic_of_custom_material_for_" + name][icustom_element][1].asDouble() * g / mole,
-                                     density_liq = configs["Geometry_definition"]["Characteristic_of_custom_material_for_" + name][icustom_element][2].asDouble() * g / cm3);
-        icustom_element++;
+                                     z = custom[icustom_element][0].asDouble(),
+                                     a = custom[icustom_element][1].asDouble() * g / mole,
+                                     density_liq = custom[icustom_element][2].asDouble() * g / cm3);
+            icustom_element++;
         }
         Material_vector.push_back(element);
     }

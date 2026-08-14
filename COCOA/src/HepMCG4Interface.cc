@@ -144,7 +144,8 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 			}
 
 			// if the particle decayed "too far" into the detector, replace it with its parent. otherwise this function just returns the original particle.
-			HepMC::GenParticle *pptr = m_truthrecordgraph.check_prod_location(*vpitr);
+			HepMC::GenParticle *pptr =
+				m_truthrecordgraph.check_prod_location(*vpitr, length_to_mm);
 
 			if (config_json_var.Save_truth_particle_graph)
 			{
@@ -194,7 +195,7 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 	}
 
 	if (config_json_var.Save_truth_particle_graph)
-		m_truthrecordgraph.fill_truth_graph();
+		m_truthrecordgraph.fill_truth_graph(momentum_to_mev, length_to_mm);
 }
 
 HepMC::GenEvent *HepMCG4Interface::GenerateHepMCEvent()

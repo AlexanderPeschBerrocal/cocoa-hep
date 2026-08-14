@@ -216,7 +216,11 @@ HepMC::GenEvent *HepMCG4Pythia8Interface::GenerateHepMCEvent()
 			return nullptr;
 		}
 
-		ToHepMC.fill_next_event(pythia, hepmcevt.get());
+		if (!ToHepMC.fill_next_event(pythia, hepmcevt.get()))
+		{
+			G4cerr << "Failed to convert the Pythia8 event to HepMC" << G4endl;
+			return nullptr;
+		}
 
 		if (verbose > 1)
 			hepmcevt->print();
@@ -311,7 +315,11 @@ HepMC::GenEvent *HepMCG4Pythia8Interface::GenerateHepMCEvent()
 				   << " attempts" << G4endl;
 			return nullptr;
 		}
-		ToHepMC.fill_next_event(pythia, hepmcevt.get(), -1, false);
+		if (!ToHepMC.fill_next_event(pythia, hepmcevt.get(), -1, false))
+		{
+			G4cerr << "Failed to convert the Pythia8 event to HepMC" << G4endl;
+			return nullptr;
+		}
 		sum_events = event;
 		if (verbose > 1)
 		{

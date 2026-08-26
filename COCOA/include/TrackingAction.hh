@@ -47,6 +47,8 @@ private:
     bool IsPrimaryPhotonDaughter(const G4Track* aTrack) const;
     bool IsInnerDetectorTrack(const G4Track* aTrack) const;
 
+	bool IsVertexInTrackerRegion(const G4Track* aTrack) const;
+
 	bool IsConversionElectron(const G4Track* aTrack) const;
 	bool HasPrimaryPhotonParent(const G4Track* aTrack) const;
 

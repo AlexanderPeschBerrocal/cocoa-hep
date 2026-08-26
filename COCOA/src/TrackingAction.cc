@@ -36,6 +36,8 @@
 
 #include "G4TrackingManager.hh"
 #include "G4Track.hh"
+#include "G4Step.hh"
+#include "G4StepPoint.hh"
 #include "G4Trajectory.hh"
 #include "G4RunManager.hh"
 // #include "DataStorage.hh"
@@ -58,6 +60,9 @@ using namespace std;
 #include "G4EmProcessSubType.hh"
 
 #include <cstdlib>
+
+#include "G4LogicalVolume.hh"
+#include "G4Region.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 TrackingAction::TrackingAction()
@@ -86,6 +91,7 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 		trjInfo.fMass = aTrack->GetDynamicParticle()->GetPrimaryParticle()->GetMass();
 
 		trjInfo.fVertexPosition = aTrack->GetVertexPosition();
+		trjInfo.fEndPosition = aTrack->GetPosition();
 		trjInfo.fGlobalTime = aTrack->GetGlobalTime();
 		
 		trjInfo.caloExtrapolMaxEkin = 0.0;
@@ -160,7 +166,7 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 	}	  //if(aTrack->GetParentID() != 0)
 	if ( IsConversionElectron( aTrack ) &&
 		 HasPrimaryPhotonParent( aTrack ) &&
-	     IsInnerDetectorTrack( aTrack ) ) {
+	     IsVertexInTrackerRegion( aTrack ) ) {
 
 	    FullTrajectoryInfo conv_el_tr;
 		conv_el_tr.is_conversion_track = true;
@@ -196,7 +202,7 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 	    trajectories.fAllConvElectrons.push_back( conv_el_tr );
 	}
 
-	if (IsNuclearInteractionDaughter(aTrack) && HasPrimaryParticleParent(aTrack) && IsInnerDetectorTrack(aTrack)) {
+	if (IsNuclearInteractionDaughter(aTrack) && HasPrimaryParticleParent(aTrack) && IsVertexInTrackerRegion(aTrack)) {
 		FullTrajectoryInfo nucl_int_tr;
 
 		nucl_int_tr.is_conversion_track = false;
@@ -229,16 +235,47 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 
 		nucl_int_tr.fParentID = FindPrimaryAncestorIndex(aTrack);
 
-		const G4VProcess* creator = aTrack->GetCreatorProcess();
-		nucl_int_tr.fprocessId = creator ? creator->GetProcessSubType() : -1;
-
 		trajectories.fAllNuclearInteractionDaughters.push_back(nucl_int_tr);
 	}
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-void TrackingAction::PostUserTrackingAction(const G4Track*)
-{}
+void TrackingAction::PostUserTrackingAction(const G4Track* aTrack)
+{
+	if (!aTrack || aTrack->GetParentID() != 0 ||
+		aTrack->GetDefinition()->GetPDGEncoding() != 22)
+		return;
+
+	auto& primaryParticles =
+		Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo;
+	for (FullTrajectoryInfo& primaryParticle : primaryParticles) {
+		if (primaryParticle.fTrackID != aTrack->GetTrackID() ||
+			primaryParticle.fPDGCode != 22 ||
+			primaryParticle.is_conversion_track)
+			continue;
+
+		primaryParticle.fTrackLength = aTrack->GetTrackLength();
+		primaryParticle.fEndPosition = aTrack->GetPosition();
+		primaryParticle.fTrackStatus = static_cast<G4int>(aTrack->GetTrackStatus());
+
+		const G4Step* finalStep = aTrack->GetStep();
+		const G4VProcess* terminatingProcess = nullptr;
+		if (finalStep && finalStep->GetPostStepPoint())
+			terminatingProcess =
+				finalStep->GetPostStepPoint()->GetProcessDefinedStep();
+
+		if (terminatingProcess) {
+			primaryParticle.fTerminationProcessType =
+				static_cast<G4int>(terminatingProcess->GetProcessType());
+			primaryParticle.fTerminationProcessSubType =
+				terminatingProcess->GetProcessSubType();
+			primaryParticle.fConverted =
+				terminatingProcess->GetProcessType() == fElectromagnetic &&
+				terminatingProcess->GetProcessSubType() == fGammaConversion;
+		}
+		break;
+	}
+}
 
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -267,6 +304,23 @@ bool TrackingAction::IsInnerDetectorTrack(const G4Track* aTrack) const {
     
     return logicalVolumeName.substr( 0, 5 ) == "inner";
     
+}
+
+bool TrackingAction::IsVertexInTrackerRegion(
+    const G4Track* aTrack) const
+{
+    if (!aTrack)
+        return false;
+
+    const G4LogicalVolume* vertexVolume =
+        aTrack->GetLogicalVolumeAtVertex();
+
+    if (!vertexVolume)
+        return false;
+
+    const G4Region* region = vertexVolume->GetRegion();
+
+    return region && region->GetName() == "TrackerRegion";
 }
 
 bool TrackingAction::IsConversionElectron(const G4Track* aTrack) const

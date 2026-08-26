@@ -29,6 +29,8 @@
 
 #include <string>
 
+#include "G4Region.hh"
+
 InnerConstruction::InnerConstruction(G4LogicalVolume* expHallLV, G4Material* default_Material, G4Material* Iron, G4Material* ElSi, bool fCheck_Overlaps) 
 {
 
@@ -90,6 +92,9 @@ InnerConstruction::InnerConstruction(G4LogicalVolume* expHallLV, G4Material* def
 	  Barrel_Inner();
 	  EndCap_Inner();
 	
+	auto* trackerRegion = new G4Region("TrackerRegion");
+	GlobalLV->SetRegion(trackerRegion);
+	trackerRegion->AddRootLogicalVolume(GlobalLV);
 
 	if (config_obj.fieldValue!=0)
 	{

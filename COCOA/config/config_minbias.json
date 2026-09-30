@@ -6,7 +6,7 @@
 
     "Save_geometry_gdml": false,
     "Geometry_gdml_path": "",
-    
+
     "Macro_file_path":"macro/Pythia8/minimum_bias.in",
     "Type_of_running": "Standard",
     "Save_truth_particle_graph": true,

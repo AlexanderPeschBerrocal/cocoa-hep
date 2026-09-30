@@ -228,9 +228,6 @@ void InnerConstruction::EndCap_Inner()
 
 	PixelTrk_EndCap(r_inn_trkStr0,r_out_trkStr3,r_out_trkPix0-r_inn_trkPix0,pos_EndCap_trkStr4,Str_VisAtt, 1, true);
 	PixelTrk_EndCap(r_inn_trkStr0,r_out_trkStr3,r_out_trkPix0-r_inn_trkPix0,pos_EndCap_trkStr4,Str_VisAtt,-1, true);
-	
-	PixelTrk_EndCap(r_inn_trkStr0,r_out_trkStr3,r_out_trkPix0-r_inn_trkPix0,pos_EndCap_trkStr4,Str_VisAtt, 1);
-	PixelTrk_EndCap(r_inn_trkStr0,r_out_trkStr3,r_out_trkPix0-r_inn_trkPix0,pos_EndCap_trkStr4,Str_VisAtt,-1);
 
     }
     

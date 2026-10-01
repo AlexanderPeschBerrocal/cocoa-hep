@@ -37,6 +37,7 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
 	config_var.check_geometry_overlap = true;
     config_var.use_inner_detector = configs["Geometry_definition"].get( "Use_inner_detector", true ).asBool();
     config_var.use_ID_support = configs["Geometry_definition"].get( "Use_ID_support", true ).asBool();
+    config_var.use_detailed_tracker_material = configs["Geometry_definition"].get( "Use_detailed_tracker_material", false ).asBool();
 
     Json::Value &layervals = configs["Graph_construction"]["max_samelayer_edges"];
     Fill_1D_vector(layervals, config_var.graph_construction.max_samelayer_edges);

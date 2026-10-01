@@ -22,6 +22,7 @@ class InnerConstruction {
         void PixelTrk_EndCap( long double r_inn_trkPix, long double r_out_trkPix, G4VisAttributes* VisAtt, int direction);
 
     private:
+        void BuildDetailedTrackerMaterial();
         Config_reader_var config_obj = Config_reader_var::GetInstance();
         G4LogicalVolume* GlobalLV;
         G4LogicalVolume* MagFieldLV;

@@ -27,6 +27,8 @@
 
 #include "G4RunManager.hh"
 
+#include <array>
+#include <cmath>
 #include <string>
 
 #include "G4Region.hh"
@@ -91,6 +93,9 @@ InnerConstruction::InnerConstruction(G4LogicalVolume* expHallLV, G4Material* def
 	
 	  Barrel_Inner();
 	  EndCap_Inner();
+	  if ( config_obj.use_inner_detector && config_obj.use_detailed_tracker_material ) {
+	      BuildDetailedTrackerMaterial();
+	  }
 	
 	auto* trackerRegion = new G4Region("TrackerRegion");
 	GlobalLV->SetRegion(trackerRegion);
@@ -109,6 +114,208 @@ InnerConstruction::InnerConstruction(G4LogicalVolume* expHallLV, G4Material* def
 }
 InnerConstruction::~InnerConstruction()
 {;}
+
+void InnerConstruction::BuildDetailedTrackerMaterial()
+{
+    // This is a deliberately simplified passive-material model.  The dimensions
+    // leave clearance around the idealised silicon and iron tracker layers.
+    auto* nist = G4NistManager::Instance();
+    auto* carbon = nist->FindOrBuildMaterial("G4_C");
+    auto* aluminium = nist->FindOrBuildMaterial("G4_Al");
+    auto* coolant = nist->FindOrBuildMaterial("G4_WATER");
+    auto* circuitBoard = nist->FindOrBuildMaterial("G4_POLYETHYLENE");
+    auto* copper = nist->FindOrBuildMaterial("G4_Cu");
+    auto* cableMaterial = nist->FindOrBuildMaterial("G4_KAPTON");
+
+    auto* carbonVis = new G4VisAttributes(true, G4Colour(0.25, 0.25, 0.25));
+    auto* pipeVis = new G4VisAttributes(true, G4Colour(0.65, 0.65, 0.65));
+    auto* coolantVis = new G4VisAttributes(true, G4Colour(0.1, 0.7, 1.0));
+    auto* electronicsVis = new G4VisAttributes(true, G4Colour(0.1, 0.55, 0.1));
+    auto* copperVis = new G4VisAttributes(true, G4Colour(0.8, 0.4, 0.1));
+    auto* cableVis = new G4VisAttributes(true, G4Colour(0.8, 0.65, 0.1));
+    carbonVis->SetForceSolid(true);
+    pipeVis->SetForceSolid(true);
+    coolantVis->SetForceSolid(true);
+    electronicsVis->SetForceSolid(true);
+    copperVis->SetForceSolid(true);
+    cableVis->SetForceSolid(true);
+
+    struct BarrelLayer {
+        G4double outerRadius;
+        G4double halfLength;
+    };
+    const std::array<BarrelLayer, 9> barrelLayers = {{
+        {r_out_trkPix0, 280 * mm}, {r_out_trkPix1, 280 * mm},
+        {r_out_trkPix2, 280 * mm}, {r_out_trkPix3, 280 * mm},
+        {r_out_trkPix4, 280 * mm}, {r_out_trkStr0, 1150 * mm},
+        {r_out_trkStr1, 1150 * mm}, {r_out_trkStr2, 1150 * mm},
+        {r_out_trkStr3, 1150 * mm}
+    }};
+
+    constexpr G4int pipesPerLayer = 8;
+    const G4double carbonThickness = 0.5 * mm;
+    const G4double pipeOuterRadius = 1.5 * mm;
+    const G4double pipeInnerRadius = 1.1 * mm;
+
+    for (std::size_t layerIndex = 0; layerIndex < barrelLayers.size(); ++layerIndex) {
+        const auto& layer = barrelLayers[layerIndex];
+        const std::string suffix = std::to_string(layerIndex);
+        const G4double carbonInnerRadius = layer.outerRadius + widthiron_add + 0.2 * mm;
+        const G4double serviceRadius = layer.outerRadius + widthiron_add + 3.0 * mm;
+
+        auto* supportSolid = new G4Tubs(
+            "Inner_Detailed_Carbon_Solid_" + suffix,
+            carbonInnerRadius,
+            carbonInnerRadius + carbonThickness,
+            layer.halfLength,
+            0.,
+            config_obj.max_phi);
+        auto* supportLV = new G4LogicalVolume(
+            supportSolid, carbon, "Inner_Detailed_Carbon_LV_" + suffix);
+        new G4PVPlacement(
+            nullptr, G4ThreeVector(), supportLV,
+            "Inner_Detailed_Carbon_PL_" + suffix,
+            MagFieldLV, false, static_cast<G4int>(layerIndex), fCheckOverlaps);
+        supportLV->SetVisAttributes(carbonVis);
+
+        auto* pipeSolid = new G4Tubs(
+            "Inner_Detailed_CoolingPipe_Solid_" + suffix,
+            0., pipeOuterRadius, layer.halfLength, 0., config_obj.max_phi);
+        auto* pipeLV = new G4LogicalVolume(
+            pipeSolid, aluminium, "Inner_Detailed_CoolingPipe_LV_" + suffix);
+        auto* coolantSolid = new G4Tubs(
+            "Inner_Detailed_Coolant_Solid_" + suffix,
+            0., pipeInnerRadius, layer.halfLength - 0.1 * mm,
+            0., config_obj.max_phi);
+        auto* coolantLV = new G4LogicalVolume(
+            coolantSolid, coolant, "Inner_Detailed_Coolant_LV_" + suffix);
+        new G4PVPlacement(
+            nullptr, G4ThreeVector(), coolantLV,
+            "Inner_Detailed_Coolant_PL_" + suffix,
+            pipeLV, false, 0, fCheckOverlaps);
+        pipeLV->SetVisAttributes(pipeVis);
+        coolantLV->SetVisAttributes(coolantVis);
+
+        for (G4int pipeIndex = 0; pipeIndex < pipesPerLayer; ++pipeIndex) {
+            const G4double phi = config_obj.max_phi * pipeIndex / pipesPerLayer;
+            new G4PVPlacement(
+                nullptr,
+                G4ThreeVector(serviceRadius * std::cos(phi),
+                              serviceRadius * std::sin(phi), 0.),
+                pipeLV,
+                "Inner_Detailed_CoolingPipe_PL_" + suffix + "_" + std::to_string(pipeIndex),
+                MagFieldLV, false, pipeIndex, fCheckOverlaps);
+        }
+
+        // Polymer-substrate and copper annuli model front-end boards at both barrel ends.
+        const G4double boardInnerRadius = layer.outerRadius - 1.0 * mm;
+        const G4double boardOuterRadius = serviceRadius + 2.0 * mm;
+        auto* boardSolid = new G4Tubs(
+            "Inner_Detailed_ElectronicsBoard_Solid_" + suffix,
+            boardInnerRadius, boardOuterRadius, 1.0 * mm, 0., config_obj.max_phi);
+        auto* boardLV = new G4LogicalVolume(
+            boardSolid, circuitBoard, "Inner_Detailed_ElectronicsBoard_LV_" + suffix);
+        auto* copperSolid = new G4Tubs(
+            "Inner_Detailed_ElectronicsCopper_Solid_" + suffix,
+            boardInnerRadius, boardOuterRadius, 0.1 * mm, 0., config_obj.max_phi);
+        auto* copperLV = new G4LogicalVolume(
+            copperSolid, copper, "Inner_Detailed_ElectronicsCopper_LV_" + suffix);
+        boardLV->SetVisAttributes(electronicsVis);
+        copperLV->SetVisAttributes(copperVis);
+
+        for (G4int direction : {-1, 1}) {
+            new G4PVPlacement(
+                nullptr, G4ThreeVector(0., 0., direction * (layer.halfLength + 3.0 * mm)),
+                boardLV,
+                "Inner_Detailed_ElectronicsBoard_PL_" + suffix + "_" + std::to_string(direction),
+                MagFieldLV, false, direction, fCheckOverlaps);
+            new G4PVPlacement(
+                nullptr, G4ThreeVector(0., 0., direction * (layer.halfLength + 4.2 * mm)),
+                copperLV,
+                "Inner_Detailed_ElectronicsCopper_PL_" + suffix + "_" + std::to_string(direction),
+                MagFieldLV, false, direction, fCheckOverlaps);
+        }
+    }
+
+    // Carbon-fibre backing disks follow each silicon endcap disk.
+    struct EndcapLayer {
+        G4double innerRadius;
+        G4double outerRadius;
+        G4double position;
+    };
+    const std::array<EndcapLayer, 15> endcapLayers = {{
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix0},
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix1},
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix2},
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix3},
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix4},
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix5},
+        {r_inn_trkPix0, r_out_trkPix4, pos_EndCap_trkPix6},
+        {r_inn_trkPix2, r_out_trkPix4, pos_EndCap_trkPix7},
+        {r_inn_trkPix2, r_out_trkPix4, pos_EndCap_trkPix8},
+        {r_inn_trkPix2, r_out_trkPix4, pos_EndCap_trkPix9},
+        {r_inn_trkStr0, r_out_trkStr3, pos_EndCap_trkStr0},
+        {r_inn_trkStr0, r_out_trkStr3, pos_EndCap_trkStr1},
+        {r_inn_trkStr0, r_out_trkStr3, pos_EndCap_trkStr2},
+        {r_inn_trkStr0, r_out_trkStr3, pos_EndCap_trkStr3},
+        {r_inn_trkStr0, r_out_trkStr3, pos_EndCap_trkStr4}
+    }};
+
+    for (std::size_t layerIndex = 0; layerIndex < endcapLayers.size(); ++layerIndex) {
+        const auto& layer = endcapLayers[layerIndex];
+        const std::string suffix = std::to_string(layerIndex);
+        auto* backingSolid = new G4Tubs(
+            "Inner_Detailed_EndcapBacking_Solid_" + suffix,
+            layer.innerRadius, layer.outerRadius, 0.25 * mm, 0., config_obj.max_phi);
+        auto* backingLV = new G4LogicalVolume(
+            backingSolid, carbon, "Inner_Detailed_EndcapBacking_LV_" + suffix);
+        backingLV->SetVisAttributes(carbonVis);
+        for (G4int direction : {-1, 1}) {
+            new G4PVPlacement(
+                nullptr,
+                G4ThreeVector(0., 0., direction * (layer.position + widthiron_add + 0.8 * mm)),
+                backingLV,
+                "Inner_Detailed_EndcapBacking_PL_" + suffix + "_" + std::to_string(direction),
+                MagFieldLV, false, direction, fCheckOverlaps);
+        }
+    }
+
+    // A thin service/cable cylinder joins the strip barrel to two endplates.
+    auto* cableSolid = new G4Tubs(
+        "Inner_Detailed_CableBundle_Solid", 1010 * mm, 1012 * mm,
+        1250 * mm, 0., config_obj.max_phi);
+    auto* cableLV = new G4LogicalVolume(
+        cableSolid, cableMaterial, "Inner_Detailed_CableBundle_LV");
+    new G4PVPlacement(
+        nullptr, G4ThreeVector(), cableLV, "Inner_Detailed_CableBundle_PL",
+        MagFieldLV, false, 0, fCheckOverlaps);
+    cableLV->SetVisAttributes(cableVis);
+
+    auto* endplateSolid = new G4Tubs(
+        "Inner_Detailed_ServiceEndplate_Solid", 30 * mm, 1050 * mm,
+        2.0 * mm, 0., config_obj.max_phi);
+    auto* endplateLV = new G4LogicalVolume(
+        endplateSolid, circuitBoard, "Inner_Detailed_ServiceEndplate_LV");
+    auto* endplateCopperSolid = new G4Tubs(
+        "Inner_Detailed_ServiceEndplateCopper_Solid", 30 * mm, 1050 * mm,
+        0.1 * mm, 0., config_obj.max_phi);
+    auto* endplateCopperLV = new G4LogicalVolume(
+        endplateCopperSolid, copper, "Inner_Detailed_ServiceEndplateCopper_LV");
+    endplateLV->SetVisAttributes(electronicsVis);
+    endplateCopperLV->SetVisAttributes(copperVis);
+    for (G4int direction : {-1, 1}) {
+        new G4PVPlacement(
+            nullptr, G4ThreeVector(0., 0., direction * 2700 * mm),
+            endplateLV,
+            "Inner_Detailed_ServiceEndplate_PL_" + std::to_string(direction),
+            MagFieldLV, false, direction, fCheckOverlaps);
+        new G4PVPlacement(
+            nullptr, G4ThreeVector(0., 0., direction * 2702.25 * mm),
+            endplateCopperLV,
+            "Inner_Detailed_ServiceEndplateCopper_PL_" + std::to_string(direction),
+            MagFieldLV, false, direction, fCheckOverlaps);
+    }
+}
 
 void InnerConstruction::Barrel_Inner()
 {

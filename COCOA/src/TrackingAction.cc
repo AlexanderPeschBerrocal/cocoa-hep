@@ -40,6 +40,7 @@
 #include "G4StepPoint.hh"
 #include "G4Trajectory.hh"
 #include "G4RunManager.hh"
+#include "G4String.hh"
 // #include "DataStorage.hh"
 
 #include "SteppingAction.hh"
@@ -300,7 +301,7 @@ bool TrackingAction::IsPrimaryPhotonDaughter(const G4Track* aTrack) const {
 bool TrackingAction::IsInnerDetectorTrack(const G4Track* aTrack) const {
 
     G4String logicalVolumeName = aTrack->GetVolume()->GetName();
-    logicalVolumeName.toLower();
+    G4StrUtil::to_lower(logicalVolumeName);
     
     return logicalVolumeName.substr( 0, 5 ) == "inner";
     

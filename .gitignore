@@ -26,3 +26,7 @@ event_display/*.html
 *.svg
 condor_setup/
 condor_files/
+COCOA/*.geometry.gdml
+COCOA/*.geometry.json
+COCOA/geometry_examples/*.geometry.gdml
+COCOA/geometry_examples/*.geometry.json

@@ -72,6 +72,7 @@ InnerConstruction::InnerConstruction(G4LogicalVolume* expHallLV, G4Material* def
 	long double iron_width_ec         = 4.4 * cm;
 	long double l_magField            = ( ( iron_r_inn_ec +0.5 * iron_width_ec ) / tan( theta_min ) ); // gap offset
 	l_magField                       -= 0.5 * fabs( iron_width_ec / ( tan( theta_min ) ) );            // gap half-width
+	magFieldHalfLength                = l_magField;
 
 	G4Tubs *magFieldTub = new G4Tubs( "Magnetic Field Tube",
 					  0.0,
@@ -126,6 +127,7 @@ void InnerConstruction::BuildDetailedTrackerMaterial()
     auto* circuitBoard = nist->FindOrBuildMaterial("G4_POLYETHYLENE");
     auto* copper = nist->FindOrBuildMaterial("G4_Cu");
     auto* cableMaterial = nist->FindOrBuildMaterial("G4_KAPTON");
+    auto* beryllium = nist->FindOrBuildMaterial("G4_Be");
 
     auto* carbonVis = new G4VisAttributes(true, G4Colour(0.25, 0.25, 0.25));
     auto* pipeVis = new G4VisAttributes(true, G4Colour(0.65, 0.65, 0.65));
@@ -133,12 +135,27 @@ void InnerConstruction::BuildDetailedTrackerMaterial()
     auto* electronicsVis = new G4VisAttributes(true, G4Colour(0.1, 0.55, 0.1));
     auto* copperVis = new G4VisAttributes(true, G4Colour(0.8, 0.4, 0.1));
     auto* cableVis = new G4VisAttributes(true, G4Colour(0.8, 0.65, 0.1));
+    auto* beamPipeVis = new G4VisAttributes(true, G4Colour(0.55, 0.55, 0.6));
     carbonVis->SetForceSolid(true);
     pipeVis->SetForceSolid(true);
     coolantVis->SetForceSolid(true);
     electronicsVis->SetForceSolid(true);
     copperVis->SetForceSolid(true);
     cableVis->SetForceSolid(true);
+    beamPipeVis->SetForceSolid(true);
+
+    // Thin beryllium beam pipe around the interaction point, running the full
+    // length of the tracker volume inside the solenoid bore.
+    auto* beamPipeSolid = new G4Tubs(
+        "Inner_Detailed_BeamPipe_Solid",
+        r_inn_beamPipe, r_out_beamPipe, magFieldHalfLength,
+        0., config_obj.max_phi);
+    auto* beamPipeLV = new G4LogicalVolume(
+        beamPipeSolid, beryllium, "Inner_Detailed_BeamPipe_LV");
+    new G4PVPlacement(
+        nullptr, G4ThreeVector(), beamPipeLV, "Inner_Detailed_BeamPipe_PL",
+        MagFieldLV, false, 0, fCheckOverlaps);
+    beamPipeLV->SetVisAttributes(beamPipeVis);
 
     struct BarrelLayer {
         G4double outerRadius;

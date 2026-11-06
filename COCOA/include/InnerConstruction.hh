@@ -28,6 +28,7 @@ class InnerConstruction {
         G4LogicalVolume* MagFieldLV;
         long double theta_min;
         long double r_inn;
+        long double magFieldHalfLength;
         bool fCheckOverlaps;
         G4Material* defaultMaterial;
         G4Material* iron;

@@ -14,6 +14,7 @@
 #include "G4Tubs.hh"
 #include "G4CutTubs.hh"
 #include "G4Cons.hh"
+#include "G4EllipticalTube.hh"
 
 #include "G4SystemOfUnits.hh"
 #include "G4IntersectionSolid.hh"
@@ -156,6 +157,8 @@ void InnerConstruction::BuildDetailedTrackerMaterial()
         nullptr, G4ThreeVector(), beamPipeLV, "Inner_Detailed_BeamPipe_PL",
         MagFieldLV, false, 0, fCheckOverlaps);
     beamPipeLV->SetVisAttributes(beamPipeVis);
+
+    BuildPixelSupportTube();
 
     struct BarrelLayer {
         G4double outerRadius;
@@ -331,6 +334,75 @@ void InnerConstruction::BuildDetailedTrackerMaterial()
             endplateCopperLV,
             "Inner_Detailed_ServiceEndplateCopper_PL_" + std::to_string(direction),
             MagFieldLV, false, direction, fCheckOverlaps);
+    }
+}
+
+void InnerConstruction::BuildPixelSupportTube()
+{
+    // Carbon-fibre support cylinder between the pixel and strip barrels,
+    // modelled after CMS's Pixel Support Tube: it also acts as the rail
+    // structure the retractable pixel detector slides on.  The as-built
+    // tube is not a perfect circle -- it sagged slightly during
+    // installation -- so its cross-section is approximated here as an
+    // ellipse (flatter vertically) rather than a circle. Dimensions are
+    // illustrative, scaled to sit in the gap between this model's pixel and
+    // strip barrels rather than reproducing the real CMS tube.
+    auto* nist = G4NistManager::Instance();
+    auto* carbon = nist->FindOrBuildMaterial("G4_C");
+    auto* railMaterial = nist->FindOrBuildMaterial("G4_Fe");
+
+    auto* tubeVis = new G4VisAttributes(true, G4Colour(0.3, 0.3, 0.35));
+    tubeVis->SetForceSolid(true);
+    auto* railVis = new G4VisAttributes(true, G4Colour(0.9, 0.9, 0.2));
+    railVis->SetForceSolid(true);
+
+    const G4double pstHalfLength = 1150 * mm;
+    const G4double pstOuterSemiAxisX = 332 * mm;
+    const G4double pstOuterSemiAxisY = 326 * mm;
+    const G4double pstWallThickness = 2 * mm;
+    const G4double pstInnerSemiAxisX = pstOuterSemiAxisX - pstWallThickness;
+    const G4double pstInnerSemiAxisY = pstOuterSemiAxisY - pstWallThickness;
+
+    auto* outerShellSolid = new G4EllipticalTube(
+        "Inner_Detailed_PixelSupportTube_Outer_Solid",
+        pstOuterSemiAxisX, pstOuterSemiAxisY, pstHalfLength);
+    auto* innerShellSolid = new G4EllipticalTube(
+        "Inner_Detailed_PixelSupportTube_Inner_Solid",
+        pstInnerSemiAxisX, pstInnerSemiAxisY, pstHalfLength + 1.0 * mm);
+    auto* pstShellSolid = new G4SubtractionSolid(
+        "Inner_Detailed_PixelSupportTube_Solid", outerShellSolid, innerShellSolid);
+    auto* pstShellLV = new G4LogicalVolume(
+        pstShellSolid, carbon, "Inner_Detailed_PixelSupportTube_LV");
+    new G4PVPlacement(
+        nullptr, G4ThreeVector(), pstShellLV, "Inner_Detailed_PixelSupportTube_PL",
+        MagFieldLV, false, 0, fCheckOverlaps);
+    pstShellLV->SetVisAttributes(tubeVis);
+
+    // Guide rails the retractable pixel detector slides on, mounted on the
+    // inside of the tube at the horizontal ("3 o'clock"/"9 o'clock") positions.
+    const G4double railRadialHeight = 5 * mm;
+    const G4double railWidth = 15 * mm;
+    const G4double railMountingClearance = 0.1 * mm;
+    auto* railSolid = new G4Box(
+        "Inner_Detailed_PixelSupportTubeRail_Solid",
+        0.5 * railRadialHeight, 0.5 * railWidth, pstHalfLength);
+    auto* railLV = new G4LogicalVolume(
+        railSolid, railMaterial, "Inner_Detailed_PixelSupportTubeRail_LV");
+    railLV->SetVisAttributes(railVis);
+
+    // The rail's outer face is flat, but the tube's inner wall is curved, so
+    // the face would dip inside the wall away from the horizontal apex
+    // unless pulled in by the ellipse's sagitta over the rail's half-width.
+    const G4double railHalfWidthAtApex = 0.5 * railWidth / pstInnerSemiAxisY;
+    const G4double ellipseSagitta =
+        pstInnerSemiAxisX * (1.0 - std::sqrt(1.0 - railHalfWidthAtApex * railHalfWidthAtApex));
+    const G4double railCentreX =
+        pstInnerSemiAxisX - ellipseSagitta - railMountingClearance - 0.5 * railRadialHeight;
+    for (G4int side : {-1, 1}) {
+        new G4PVPlacement(
+            nullptr, G4ThreeVector(side * railCentreX, 0., 0.), railLV,
+            "Inner_Detailed_PixelSupportTubeRail_PL_" + std::to_string(side),
+            MagFieldLV, false, side, fCheckOverlaps);
     }
 }
 

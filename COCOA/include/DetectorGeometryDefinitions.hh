@@ -92,4 +92,11 @@ constexpr long double pos_EndCap_trkStr3 = 2250 * mm;
 constexpr long double pos_EndCap_trkStr4 = 2650 * mm;
 constexpr int NumberOfIronLayers = 2;
 
+// Central beam pipe around the interaction point. Dimensions follow typical
+// LHC practice (e.g. ATLAS): thin beryllium wall, chosen for its low Z to
+// minimise multiple scattering and secondary interactions close to the IP.
+constexpr long double thiknessBeamPipe = 0.8 * mm;
+constexpr long double r_out_beamPipe = 25 * mm;
+constexpr long double r_inn_beamPipe = r_out_beamPipe - thiknessBeamPipe;
+
 #endif // __DETECTORGEOMETRYDEFINITIONS_H__

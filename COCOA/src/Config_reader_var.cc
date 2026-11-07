@@ -10,10 +10,20 @@ Config_reader_var::Config_reader_var()  :
     
 {
     Output_file_path = "PFlowNtupleFile_QCD.root";
+
+    Geometry_json_path = "";
+    Geometry_gdml_path = "";
+
     Type_of_running  = "Standard";
+
+    Save_geometry_json = false;
+    Save_geometry_gdml = false;
+
     Save_truth_particle_graph = false;
     Use_high_granularity = false;
     use_inner_detector = true;
+    use_ID_support = true;
+    use_detailed_tracker_material = false;
     r_inn_calo = 1500;
     Layer_gap = 8;
     fieldValue = 0.0;

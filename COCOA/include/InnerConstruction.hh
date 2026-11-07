@@ -22,11 +22,14 @@ class InnerConstruction {
         void PixelTrk_EndCap( long double r_inn_trkPix, long double r_out_trkPix, G4VisAttributes* VisAtt, int direction);
 
     private:
+        void BuildDetailedTrackerMaterial();
+        void BuildPixelSupportTube();
         Config_reader_var config_obj = Config_reader_var::GetInstance();
         G4LogicalVolume* GlobalLV;
         G4LogicalVolume* MagFieldLV;
         long double theta_min;
         long double r_inn;
+        long double magFieldHalfLength;
         bool fCheckOverlaps;
         G4Material* defaultMaterial;
         G4Material* iron;

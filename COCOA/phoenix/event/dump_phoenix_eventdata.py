@@ -3,12 +3,35 @@ import uproot
 import numpy as np
 import pickle as pkl
 import pandas as pd
+import sys
+import types
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import argparse
 import seaborn as sns
 
 cmap_topos = sns.color_palette("Set3", as_cmap=True)
+
+
+def load_legacy_cell_lookup(cell_path):
+    """
+    Load the historical pandas pickle used for the cell geometry lookup.
+
+    The shipped lookup table was created with an older pandas release that
+    pickled classes from `pandas.core.indexes.numeric`, which no longer exists
+    in pandas 2.x.  A tiny shim keeps those references resolvable without
+    requiring users to regenerate the file.
+    """
+    if "pandas.core.indexes.numeric" not in sys.modules:
+        numeric_mod = types.ModuleType("pandas.core.indexes.numeric")
+        numeric_mod.Index = pd.Index
+        numeric_mod.Int64Index = pd.Index
+        numeric_mod.Float64Index = pd.Index
+        numeric_mod.UInt64Index = pd.Index
+        sys.modules["pandas.core.indexes.numeric"] = numeric_mod
+
+    with open(cell_path, "rb") as handle:
+        return pkl.load(handle, encoding="latin1")
 
 class TrackHelix(object):
     
@@ -378,7 +401,7 @@ def cocoa_to_phoenix(ntuple_path, cell_path, output_path, nevents=-1, firstevent
     true_jet_m   = tree["true_jet_m"].array(library='np', entry_stop=lastevent,entry_start=firstevent)
 
     ### Retrieve map of cells
-    cell_df   = pkl.load(open(cell_path,'rb'))
+    cell_df   = load_legacy_cell_lookup(cell_path)
 
     ### Make up for iron gap <-- already converted upstream
     cell_df.loc[ cell_df['layer']==4, 'layer'] = 3

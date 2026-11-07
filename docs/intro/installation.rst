@@ -36,7 +36,7 @@ Then in the `COCOA <https://github.com/cocoa-hep/cocoa-hep/tree/main/COCOA>`_ di
     
             mkdir build
             cd build
-            cmake ../
+            cmake ..
             make -j<# cpu cores>
             cd ..
 

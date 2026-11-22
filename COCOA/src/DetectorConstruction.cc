@@ -58,6 +58,8 @@
 #include "GeometryMaterialWriter.hh"
 #include "G4GDMLParser.hh"
 
+#include <cstdio>
+#include <fstream>
 #include <string>
 
 // G4ThreadLocal
@@ -76,14 +78,25 @@ long double GetPhi(long double px, long double py) {
 	return phi;    
 }
 
-std::string DetectorConstruction::MakeJSONOutputPath() const
+std::string DetectorConstruction::MakeGeometryOutputPath(const std::string &explicit_path,
+                                                         const std::string &suffix) const
 {
-  if (!config_json_var.Geometry_json_path.empty())
+  if (!explicit_path.empty())
   {
-    return config_json_var.Geometry_json_path;
+    return explicit_path;
   }
 
+  // Output_file_path already includes a --output override (see COCOAMain.cc).
   std::string out = config_json_var.Output_file_path;
+  if (out.empty())
+  {
+    G4ExceptionDescription description;
+    description << "Cannot derive the path of the " << suffix << " geometry file: "
+                << "neither Geometry_" << suffix << "_path nor an output ROOT file "
+                << "(Output_file_path or --output) is set.";
+    G4Exception("DetectorConstruction::MakeGeometryOutputPath", "COCOA_GEOM001",
+                FatalException, description);
+  }
 
   const std::string root_suffix = ".root";
   if (out.size() >= root_suffix.size() &&
@@ -94,28 +107,7 @@ std::string DetectorConstruction::MakeJSONOutputPath() const
     out.erase(out.size() - root_suffix.size());
   }
 
-  return out + ".geometry.json";
-}
-
-std::string DetectorConstruction::MakeGDMLOutputPath() const
-{
-  if (!config_json_var.Geometry_gdml_path.empty())
-  {
-    return config_json_var.Geometry_gdml_path;
-  }
-
-  std::string out = config_json_var.Output_file_path;
-
-  const std::string root_suffix = ".root";
-  if (out.size() >= root_suffix.size() &&
-      out.compare(out.size() - root_suffix.size(),
-                  root_suffix.size(),
-                  root_suffix) == 0)
-  {
-    out.erase(out.size() - root_suffix.size());
-  }
-
-  return out + ".geometry.gdml";
+  return out + ".geometry." + suffix;
 }
 
 DetectorConstruction::DetectorConstruction(Geometry_definition Geometry): G4VUserDetectorConstruction()
@@ -185,15 +177,24 @@ G4VPhysicalVolume *DetectorConstruction::Construct()
 
 	if (config_json_var.Save_geometry_json)
 	{
-	GeometryMaterialWriter::WriteGeometryMaterialJson(
-		expHall,
-		MakeJSONOutputPath());
+		GeometryMaterialWriter::WriteGeometryMaterialJson(
+			expHall,
+			MakeGeometryOutputPath(config_json_var.Geometry_json_path, "json"));
 	}
 
 	if (config_json_var.Save_geometry_gdml)
 	{
+		const std::string gdml_path =
+			MakeGeometryOutputPath(config_json_var.Geometry_gdml_path, "gdml");
+		// G4GDMLParser refuses to overwrite an existing file (fatal exception).
+		// Replace it instead, as the ROOT output file is replaced as well.
+		if (std::ifstream(gdml_path).good())
+		{
+			G4cout << "Replacing existing GDML file " << gdml_path << G4endl;
+			std::remove(gdml_path.c_str());
+		}
 		G4GDMLParser parser;
-		parser.Write(MakeGDMLOutputPath(), expHall);
+		parser.Write(gdml_path, expHall);
 	}
 
 	return expHall;

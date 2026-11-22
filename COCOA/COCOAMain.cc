@@ -197,7 +197,14 @@ int main(int argc, char **argv)
 	}
 	Config_reader_var &config_var = Config_reader_var::GetInstance();
 	Config_reader_func config_json_func(path_to_config, config_var);
-	
+
+	// Resolve the output path before the geometry is constructed, so that files
+	// derived from it (geometry JSON/GDML) follow a --output override.
+	if (root_file_path != "")
+		config_var.Output_file_path = root_file_path;
+	else
+		root_file_path = config_var.Output_file_path;
+
 	//* choose the Random engine
 	CLHEP::HepRandom::setTheEngine(new CLHEP::RanecuEngine());
 	G4Random::setTheSeed(seed);
@@ -223,18 +230,20 @@ int main(int argc, char **argv)
 
 	runManager->Initialize();
 
+	if (config_var.check_geometry_overlap_only)
+	{
+		G4cout << "Check_Geometry_overlap_only is set: geometry constructed and checked, "
+		       << "no events are simulated." << G4endl;
+		return 0;
+	}
+
 	G4VUserPrimaryGeneratorAction *gen_action = new PrimaryGeneratorAction;
 	runManager->SetUserAction(gen_action);
 
-	if ((root_file_path == ""))
+	if (root_file_path == "")
 	{
-		if (config_var.Output_file_path!="")
-			root_file_path = config_var.Output_file_path;
-		else
-		{
-			G4cout<<"root_file_path is not given!"<<G4endl;
-			return 1;
-		}
+		G4cout<<"root_file_path is not given!"<<G4endl;
+		return 1;
 	}
 	
 	OutputRunAction *outputrunaction = new OutputRunAction(root_file_path, config_var.Save_truth_particle_graph);

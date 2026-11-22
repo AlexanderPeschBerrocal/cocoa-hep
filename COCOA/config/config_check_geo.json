@@ -1,4 +1,6 @@
 {
+    "Output_file_path": "./cocoa_geometry_check.root",
+
     "Save_geometry_json": true,
     "Geometry_json_path": "",
 

@@ -67,8 +67,10 @@ public:
 private:
 	// G4VPhysicalVolume*   fGapPV;      // the gap physical volume
 
-	std::string MakeJSONOutputPath() const;
-	std::string MakeGDMLOutputPath() const;
+	// Path of a geometry sidecar file: explicit_path if set, otherwise the
+	// output ROOT file path with ".root" replaced by ".geometry.<suffix>".
+	std::string MakeGeometryOutputPath(const std::string &explicit_path,
+	                                   const std::string &suffix) const;
 
 	Geometry_definition geometry;
 	G4bool fCheckOverlaps; // option to activate checking of volumes overlaps

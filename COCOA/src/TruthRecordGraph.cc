@@ -1,6 +1,7 @@
 #include "TruthRecordGraph.hh"
 #include "OutputRunAction.hh"
 
+#include <algorithm>
 #include <limits>
 
 void TruthRecordGraph::clear()
@@ -276,6 +277,12 @@ void TruthRecordGraph::fill_truth_graph()
 		std::vector<int> direct_daughters;
 
 		find_daughters(particle, m_interesting_particles, all_direct_daughters);
+		// The recursive search reaches the same interesting daughter once per
+		// path through the generator record (e.g. via colour-connected
+		// multi-parent vertices), which used to produce duplicate edges.
+		std::sort(all_direct_daughters.begin(), all_direct_daughters.end());
+		all_direct_daughters.erase(std::unique(all_direct_daughters.begin(), all_direct_daughters.end()),
+					   all_direct_daughters.end());
 		clean_daugthers(m_interesting_particles, all_direct_daughters, direct_daughters);
 
 		for (auto d_i : direct_daughters)

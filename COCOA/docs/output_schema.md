@@ -92,11 +92,24 @@ inside the tracker region and whose photon is either
 One row per e⁺ or e⁻ created by a conversion recorded in `conv_vtx_*`.
 
 The calorimeter cell branch `cell_conv_el_idx` points into this table. Energy
-deposited by a particle is attributed to the *nearest* recorded conversion leg
-among its ancestors, and `cell_conv_el_idx` is the leg with the largest
-attributed energy in the cell. A shower started by a primary-photon leg is
-therefore split between that leg and the legs of recorded secondary conversions
-inside it. To attribute a cell to the primary photon, use
+deposited by a particle is attributed to the *outermost* recorded conversion
+leg among its ancestors (the leg itself included), and `cell_conv_el_idx` is
+the leg with the largest attributed energy in the cell, or −1 if no energy in
+the cell comes from a recorded leg.
+
+- The shower of a primary-photon leg is attributed to that leg as a whole,
+  including the showers of recorded secondary conversions inside it. The energy
+  attributed to it is the same as in schema 1 and does not depend on
+  `Conversion_secondary_photon_e_min_mev`.
+- Legs of a conversion inside the shower of another recorded leg receive no
+  energy and are never the target of a cell.
+- A secondary conversion outside the shower of any other recorded leg (e.g. a
+  photon from a π⁰ produced in a hadronic interaction, or a bremsstrahlung
+  photon of a primary electron) is attributed to its own legs. Where such a
+  shower deposits more energy in a cell than a primary-photon leg, the cell
+  points to the secondary leg.
+
+To attribute a cell to the primary particle, use
 `conv_vtx_in_ancestor_idx[conv_el_vtx_idx[cell_conv_el_idx]]`.
 
 Columns: see [Outgoing-particle columns](#outgoing-particle-columns), with prefix `conv_el_`.
@@ -314,6 +327,7 @@ composition.
 | `conv_el_primary_photon_idx` | `conv_vtx_in_particle_idx[conv_el_vtx_idx]` |
 | `conv_el_prod_{x,y,z}` | `conv_vtx_{x,y,z}[conv_el_vtx_idx]` |
 | `conv_el_*` only for primary photons | also secondary photons above threshold |
+| `cell_conv_el_idx` only primary-photon legs | outermost recorded leg, which can also be a secondary-photon leg (see `conv_el_*`) |
 | truth-graph edges with duplicates | each edge once |
 | no run metadata | `RunInfo`, `Materials`, `Volumes`, `event_id`, `run_seed` |
 
@@ -339,6 +353,9 @@ Mapping of the former photon branches:
 - `util/compare_outputs.py REFERENCE.root CANDIDATE.root` compares two files made
   with the same configuration and seed, branch by branch. Against a schema-1
   reference it also checks the former `primary_photon_*` and `conv_el_*` branches
-  against their schema-2 replacements. Expected differences between schema 1 and
-  2 for the same seed: `conv_el_*` (additional legs of secondary photons) and
-  `cell_conv_el_idx` (see `conv_el_*`); pass them with `--ignore`.
+  against their schema-2 replacements, and that a cell with a schema-1
+  `cell_conv_el_idx` keeps it or now points to a secondary-photon leg. Expected
+  differences between schema 1 and 2 for the same seed: `conv_el_*`
+  (additional legs of secondary photons) and `cell_conv_el_idx` (cells that
+  were −1, or where a secondary-photon shower now outweighs the primary-photon
+  leg); pass them with `--ignore`.

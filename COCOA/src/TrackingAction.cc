@@ -114,8 +114,18 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 		{
 		    bool foundTraj(false);
 		    int mTraj(-1); //, mParent(-1);
-		    for (int iTraj = (int)_trajectories->size() - 1; iTraj >= 0; iTraj--)
+		    // Primaries: the families are disjoint, search the newest first.
+		    // Conversion legs: families nest (a recorded secondary conversion
+		    // inside the shower of an earlier leg). Search the oldest first, so
+		    // that a particle joins the outermost recorded leg among its
+		    // ancestors; cell_conv_el_idx then points to that leg
+		    // (docs/output_schema.md, conv_el_*). Nested legs keep only their
+		    // own track in their family and are never chosen for a cell.
+		    const bool oldestFirst = (_trajectories == &trajectories.fAllConvElectrons);
+		    const int nTraj = (int)_trajectories->size();
+		    for (int kTraj = 0; kTraj < nTraj; kTraj++)
 			{
+			    const int iTraj = oldestFirst ? kTraj : nTraj - 1 - kTraj;
 			    for (int iParent = (int)_trajectories->at(iTraj).vTrackID.size() - 1; iParent >= 0; iParent--)
 				{
 				    if (ParentID == _trajectories->at(iTraj).vTrackID.at(iParent))

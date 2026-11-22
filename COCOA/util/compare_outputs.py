@@ -125,6 +125,39 @@ def main() -> int:
         if not ok:
             failures.append("conversion vertex (legacy)")
 
+        if "cell_conv_el_idx" in ref.fields and "cell_conv_el_idx" in new.fields:
+            # Schema-1 leg k is the k-th primary-photon leg in schema 2. The energy
+            # attributed to primary-photon legs is unchanged, so a cell that had a
+            # value keeps it unless the shower of a secondary-photon leg (absent in
+            # schema 1) deposits more in the cell. It can neither become -1 nor
+            # move to another primary-photon leg.
+            leg_rows = ak.local_index(new["conv_el_vtx_idx"])[primary_leg]
+            ref_cell = ref["cell_conv_el_idx"]
+            new_cell = new["cell_conv_el_idx"]
+            ok = bool(ak.all(ak.num(ref_cell) == ak.num(new_cell)))
+            n_had = kept = to_secondary = gained = 0
+            for is_primary, rows, r, c in zip(primary_leg, leg_rows, ref_cell, new_cell) if ok else ():
+                is_primary, rows, r, c = np.asarray(is_primary), np.asarray(rows), np.asarray(r), np.asarray(c)
+                had = r >= 0
+                n_had += int(had.sum())
+                gained += int(((~had) & (c >= 0)).sum())
+                if not had.any():
+                    continue
+                if r[had].max() >= len(rows) or (c[had] < 0).any():
+                    ok = False
+                    continue
+                same = c[had] == rows[r[had]]
+                secondary = ~is_primary[c[had]]
+                kept += int(same.sum())
+                to_secondary += int(secondary.sum())
+                if not np.all(same | secondary):
+                    ok = False
+            print(f"  cell_conv_el_idx consistent with schema 1: {ok} ({n_had} cells with a value: "
+                  f"{kept} unchanged, {to_secondary} now a secondary-photon leg; "
+                  f"{gained} cells newly attributed)")
+            if not ok:
+                failures.append("cell_conv_el_idx (legacy)")
+
     print("\nRESULT:", "identical" if not failures else f"{len(failures)} differences")
     return 1 if failures else 0
 

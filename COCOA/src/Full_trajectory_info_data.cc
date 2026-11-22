@@ -29,7 +29,7 @@ int Full_trajectory_info_data::DeltaR_iso(float px, float py, float pz ,size_t i
     float ptot_origin = sqrt(px*px+py*py+pz*pz);
     float theta_origin = acos(pz/ptot_origin);
     float eta_origin = -1*log(tan(theta_origin/2.));
-    float phi_origin = atan(py/px);
+    float phi_origin = atan2(py, px);
 
     float pT =  sqrt(px*px+py*py) / 1e3;
     float iso_radius = std::min(10./pT, 0.2);
@@ -47,7 +47,7 @@ int Full_trajectory_info_data::DeltaR_iso(float px, float py, float pz ,size_t i
 	float px_loop   = fAllTrajectoryInfo.at(part_i).fMomentum.x();
 	float py_loop   = fAllTrajectoryInfo.at(part_i).fMomentum.y();
 	float pz_loop   = fAllTrajectoryInfo.at(part_i).fMomentum.z();
-	float phi       = atan(py_loop/px_loop);
+	float phi       = atan2(py_loop, px_loop);
 	float ptot_loop = sqrt(px_loop*px_loop+py_loop*py_loop+pz_loop*pz_loop);
 	float theta     = acos(pz_loop/ptot_loop);
 	float eta       = -1*log(tan(theta/2.));

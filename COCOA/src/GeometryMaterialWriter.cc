@@ -3,6 +3,7 @@
 #include "G4VPhysicalVolume.hh"
 #include "G4LogicalVolume.hh"
 #include "G4VSolid.hh"
+#include "G4Element.hh"
 #include "G4Material.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4RotationMatrix.hh"
@@ -52,6 +53,28 @@ namespace
     out["radiation_length_mm"] = mat->GetRadlen() / mm;
     out["nuclear_interaction_length_mm"] = mat->GetNuclearInterLength() / mm;
 
+    double z_eff = 0.0;
+    double a_eff = 0.0;
+    GeometryMaterialWriter::EffectiveZA(mat, z_eff, a_eff);
+    out["z_eff"] = z_eff;
+    out["a_eff_g_per_mol"] = a_eff;
+
+    Json::Value elements(Json::arrayValue);
+    const G4ElementVector* element_vector = mat->GetElementVector();
+    const G4double* mass_fractions = mat->GetFractionVector();
+    for (size_t i = 0; i < mat->GetNumberOfElements(); ++i)
+    {
+      const G4Element* element = (*element_vector)[i];
+      Json::Value e;
+      e["name"] = element->GetName();
+      e["symbol"] = element->GetSymbol();
+      e["z"] = element->GetZ();
+      e["a_g_per_mol"] = element->GetA() / (g / mole);
+      e["mass_fraction"] = mass_fractions[i];
+      elements.append(e);
+    }
+    out["elements"] = elements;
+
     return out;
   }
 
@@ -72,15 +95,11 @@ namespace
 
     const G4ThreeVector local_translation = pv->GetTranslation();
 
-    G4RotationMatrix local_rotation;
-    if (pv->GetRotation())
-    {
-      local_rotation = *(pv->GetRotation());
-    }
-    else
-    {
-      local_rotation = G4RotationMatrix();
-    }
+    // GetRotation() returns the *frame* rotation passed to G4PVPlacement, i.e.
+    // the inverse of the rotation applied to the volume. The transformation of
+    // a point from the daughter frame into the mother frame uses the object
+    // rotation: p_mother = R_object * p_daughter + t.
+    const G4RotationMatrix local_rotation = pv->GetObjectRotationValue();
 
     const G4ThreeVector global_translation =
         parent_global_translation + parent_global_rotation * local_translation;
@@ -146,12 +165,29 @@ namespace
   }
 }
 
+void GeometryMaterialWriter::EffectiveZA(const G4Material* material, double& z_eff, double& a_eff_g_mol)
+{
+  z_eff = 0.0;
+  a_eff_g_mol = 0.0;
+  if (!material) return;
+
+  const G4ElementVector* elements = material->GetElementVector();
+  const G4double* mass_fractions = material->GetFractionVector();
+  for (size_t i = 0; i < material->GetNumberOfElements(); ++i)
+  {
+    z_eff += mass_fractions[i] * (*elements)[i]->GetZ();
+    a_eff_g_mol += mass_fractions[i] * (*elements)[i]->GetA() / (g / mole);
+  }
+}
+
 void GeometryMaterialWriter::WriteGeometryMaterialJson(
     G4VPhysicalVolume* world,
     const std::string& output_path)
 {
   Json::Value root;
-  root["format"] = "cocoa_geometry_material_dump_v2";
+  root["format"] = "cocoa_geometry_material_dump_v3";
+  root["rotation_convention"] =
+      "object rotation: global_point = global_rotation_matrix * local_point + global_translation_mm";
   root["units"]["length"] = "mm";
   root["units"]["volume"] = "mm3";
   root["units"]["surface_area"] = "mm2";

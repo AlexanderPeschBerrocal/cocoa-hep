@@ -33,6 +33,7 @@
 #include "G4ProcessManager.hh"
 #include "G4Transportation.hh"
 #include "G4CoupledTransportation.hh"
+#include "Run_metadata.hh"
 
 using namespace std;
 
@@ -77,6 +78,7 @@ void OutputRunAction::BeginOfRunAction(const G4Run *run)
 {
 	(void)run;
 
+	Run_metadata::BeginRun();
 	ChangeLooperParameters(G4Electron::Definition());
 	// Get analysis manager
 	// auto analysisManager = G4AnalysisManager::Instance();
@@ -162,12 +164,13 @@ void OutputRunAction::BeginOfRunAction(const G4Run *run)
 
 }
 
-void OutputRunAction::EndOfRunAction(const G4Run * /*aRun*/)
+void OutputRunAction::EndOfRunAction(const G4Run *aRun)
 {
 	outf->cd();
 	outTree_low->Write();
 	Config_reader_var &config_var = Config_reader_var::GetInstance();
 	if (config_var.Use_high_granularity) outTree_high->Write();
+	Run_metadata::Write(aRun->GetNumberOfEvent());
 	outf->Close();
 }
 

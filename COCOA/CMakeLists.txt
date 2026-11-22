@@ -136,6 +136,21 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #
 add_executable(COCOA COCOAMain.cc ${sources} ${headers})
 
+#----------------------------------------------------------------------------
+# Git state of the source tree, written to the RunInfo tree of every output
+# file. Regenerated at each build so that it matches the built sources.
+#
+set(COCOA_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+add_custom_target(cocoa_git_version ALL
+    COMMAND ${CMAKE_COMMAND}
+            -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+            -DOUTPUT=${COCOA_GENERATED_DIR}/CocoaVersion.hh
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CocoaGitVersion.cmake
+    BYPRODUCTS ${COCOA_GENERATED_DIR}/CocoaVersion.hh
+    COMMENT "Recording git state of the COCOA sources")
+add_dependencies(COCOA cocoa_git_version)
+target_include_directories(COCOA PRIVATE ${COCOA_GENERATED_DIR})
+
 
 target_include_directories(COCOA PUBLIC ${UUID_INCLUDE_DIRS})
 

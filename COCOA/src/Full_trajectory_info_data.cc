@@ -120,7 +120,9 @@ void Full_trajectory_info_data::fill_var(){
     for (int itrack = 0; itrack < size_tracks; itrack++)
     {
 	    int trackParticleId = tracks_obj.Tracks_list[itrack].nFinal_State_Particles;
-        particle_to_track.at(trackParticleId) = itrack;	
+	    // Tracks of conversion legs (superclustering) do not belong to a primary.
+	    if (trackParticleId < (int)particle_to_track.size())
+	        particle_to_track.at(trackParticleId) = itrack;
     }
     
     for( const FullTrajectoryInfo& conv_el_tr : fAllConvElectrons ) {

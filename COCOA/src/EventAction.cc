@@ -192,15 +192,18 @@ void EventAction::EndOfEventAction(const G4Event *evt)
 		}
 		else
 		{
+			// Input of the track emulation. For superclustering, the conversion legs
+			// are appended so that electrons and photon conversions are handled in
+			// one go. They are appended to a copy: fAllTrajectoryInfo (particle_*,
+			// truth jets) must contain Geant4 primaries only. The tracks of the legs
+			// get track_parent_idx = n_primaries + (row in conv_el_*).
+			std::vector<FullTrajectoryInfo> tracking_input = trajectories.fAllTrajectoryInfo;
 			if ( config_var.doSuperclustering )
-			{
-				//Append conversion tracks to primary tracks list so we can do 
-				//superclustering of both electrons and photon conversions in one go
-				for (int iconv=0; iconv < trajectories.fAllConvElectrons.size(); iconv++)
-					trajectories.fAllTrajectoryInfo.push_back(trajectories.fAllConvElectrons.at(iconv));
-			}
+				tracking_input.insert(tracking_input.end(),
+						      trajectories.fAllConvElectrons.begin(),
+						      trajectories.fAllConvElectrons.end());
 
-			Tracking tracking_low(trajectories.fAllTrajectoryInfo, false, tracks_list_low.Tracks_list, config_var.low_resolution);
+			Tracking tracking_low(tracking_input, false, tracks_list_low.Tracks_list, config_var.low_resolution);
 
 			ReduceResolution noise_apply;
 			noise_apply.apply_noise(cells_data_low.fCell_array);

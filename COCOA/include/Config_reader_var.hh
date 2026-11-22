@@ -76,6 +76,7 @@ struct Jet_parameters
 struct Fiducial_cuts
 {
     float pt_min;  // keep particles above this [GeV]
+    float e_min;   // keep particles above this total energy [GeV]
     float eta_max; // keep particles below this
     float dR_cut;  // remove particles at truth level separated farther than dR_cut from the primary particle (used to generate single-jet data)
 };

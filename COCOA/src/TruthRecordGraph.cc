@@ -370,6 +370,17 @@ void TruthRecordGraph::fill_truth_graph()
 			}
 		}
 	}
+
+	// Edges were built between positions in m_interesting_particles; express
+	// them as node_* rows. Only interesting particles with edges become nodes,
+	// so the two numberings differ as soon as one of them has no edge.
+	std::vector<int> node_row(n_particles, -1);
+	for (size_t row = 0; row < node_idx.size(); ++row)
+		node_row[node_idx[row]] = static_cast<int>(row);
+	for (int &index : edge_start)
+		index = node_row[index];
+	for (int &index : edge_end)
+		index = node_row[index];
 }
 
 void TruthRecordGraph::link_to_particles(const std::vector<int> &particle_generator_idx,

@@ -2,6 +2,7 @@
 #include "OutputRunAction.hh"
 
 #include <algorithm>
+#include <unordered_map>
 #include <limits>
 
 void TruthRecordGraph::clear()
@@ -314,12 +315,15 @@ void TruthRecordGraph::fill_truth_graph()
 			node_idx.push_back(part_i);
 			HepMC::GenParticle *particle = m_interesting_particles.at(part_i);
 
+			// Position in m_final_state_particles (the generator index attached
+			// to the Geant4 primary). Turned into a particle_* row index by
+			// link_to_particles() once the event has been tracked.
 			int node_final_state_idx = -1;
 
 			std::vector<HepMC::GenParticle *>::iterator find_it = std::find(m_final_state_particles.begin(), m_final_state_particles.end(), particle);
 			if (find_it != m_final_state_particles.end())
 			{
-				node_final_state_idx = abs(std::distance(m_final_state_particles.end(), find_it)) - 1;
+				node_final_state_idx = std::distance(m_final_state_particles.begin(), find_it);
 			}
 
 			node_pdg_id.push_back(particle->pdg_id());
@@ -365,6 +369,30 @@ void TruthRecordGraph::fill_truth_graph()
 				node_decz.push_back(missing_position);
 			}
 		}
+	}
+}
+
+void TruthRecordGraph::link_to_particles(const std::vector<int> &particle_generator_idx,
+					 std::vector<int> &particle_node_idx)
+{
+	std::unordered_map<int, int> generator_to_row;
+	for (size_t row = 0; row < particle_generator_idx.size(); ++row)
+		if (particle_generator_idx[row] >= 0)
+			generator_to_row[particle_generator_idx[row]] = static_cast<int>(row);
+
+	particle_node_idx.assign(particle_generator_idx.size(), -1);
+	for (size_t node = 0; node < final_idx.size(); ++node)
+	{
+		if (final_idx[node] < 0)
+			continue;
+		const auto row = generator_to_row.find(final_idx[node]);
+		if (row == generator_to_row.end())
+		{
+			final_idx[node] = -1;
+			continue;
+		}
+		final_idx[node] = row->second;
+		particle_node_idx[row->second] = static_cast<int>(node);
 	}
 }
 

@@ -30,6 +30,7 @@
 // #include "OutputRunAction.hh"
 
 #include "HepMCG4Interface.hh"
+#include "PrimaryParticleInformation.hh"
 #include "OutputRunAction.hh"
 
 #include "G4RunManager.hh"
@@ -208,6 +209,7 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 			int pdgcode = pptr->pdg_id();
 			G4LorentzVector p(mom.px(), mom.py(), mom.pz(), mom.e());
 			G4PrimaryParticle *g4prim = new G4PrimaryParticle(pdgcode, p.x() * MeV, p.y() * MeV, p.z() * MeV);
+			g4prim->SetUserInformation(new PrimaryParticleInformation(m_truthrecordgraph.m_final_state_particles.size()));
 			g4vtx->SetPrimary(g4prim);
 			m_truthrecordgraph.m_final_state_particles.push_back(pptr);
 		}
@@ -226,7 +228,9 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 		for (HepMC::GenParticle *pptr : vertex_and_particles.second)
 		{
 			const HepMC::FourVector mom = pptr->momentum();
-			g4vtx->SetPrimary(new G4PrimaryParticle(pptr->pdg_id(), mom.px() * MeV, mom.py() * MeV, mom.pz() * MeV));
+			G4PrimaryParticle *g4prim = new G4PrimaryParticle(pptr->pdg_id(), mom.px() * MeV, mom.py() * MeV, mom.pz() * MeV);
+			g4prim->SetUserInformation(new PrimaryParticleInformation(m_truthrecordgraph.m_final_state_particles.size()));
+			g4vtx->SetPrimary(g4prim);
 			m_truthrecordgraph.m_final_state_particles.push_back(pptr);
 		}
 		g4event->AddPrimaryVertex(g4vtx);

@@ -80,6 +80,16 @@ struct Fiducial_cuts
     float eta_max; // keep particles below this
     float dR_cut;  // remove particles at truth level separated farther than dR_cut from the primary particle (used to generate single-jet data)
 };
+// What is written to the truth tables conv_vtx_*/conv_el_* and
+// nucl_vtx_*/nucl_dau_* (see docs/output_schema.md). Energies in MeV.
+struct Truth_record_var
+{
+    bool  record_secondary_conversions          = true;
+    float conversion_secondary_photon_e_min     = 100.f; // total energy of a non-primary photon
+    bool  record_secondary_nuclear_interactions = true;
+    float nuclear_secondary_hadron_ekin_min     = 300.f; // kinetic energy of a non-primary hadron
+    float nuclear_daughter_ekin_min             = 0.f;   // kinetic energy of a stored daughter
+};
 class Config_reader_var
 {
 private:
@@ -129,6 +139,15 @@ public:
     Particle_flow_alg_var particle_flow;
     Jet_parameters jet_parameter;
     Fiducial_cuts fiducial_cuts;
+    Truth_record_var truth_record;
+
+    // Run provenance, written to the RunInfo tree.
+    std::string config_path;
+    std::string config_json_text;
+    std::string command_line;
+    std::string macro_path_used;
+    long long   run_seed = 0;
+    int         n_events_requested = -1;
 
     bool doSuperclustering;
 

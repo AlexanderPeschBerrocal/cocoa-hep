@@ -36,6 +36,7 @@
 #include "G4RunManager.hh"
 // #include "DataStorage.hh"
 #include "SteppingAction.hh"
+#include "Truth_record_data.hh"
 #include "DetectorConstruction.hh"
 #include "DetectorGeometryDefinitions.hh"
 //#include "FullTrajectoryInfo.hh"
@@ -144,6 +145,10 @@ int *SteppingAction::CellIndex(const char* cellName, double XPos, double YPos, d
 
 void SteppingAction::UserSteppingAction(const G4Step *astep)
 {
+	// Truth record: material traversed, interaction vertices, exits from the
+	// tracker region (docs/output_schema.md).
+	Truth_record_data::GetInstance().Step(astep);
+
 	G4Track *aTrack = astep->GetTrack();
 	
 	// prevent infinite loops

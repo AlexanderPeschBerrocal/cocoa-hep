@@ -102,6 +102,8 @@ void OutputRunAction::BeginOfRunAction(const G4Run *run)
 	outf = new TFile(TString(m_outputfilename), "RECREATE");
 	TString outTree_name =  config_var.Use_high_granularity ? "Low_Tree" : "Out_Tree";
 	outTree_low = new TTree(outTree_name, outTree_name);
+	Truth_record_data &truth_record = Truth_record_data::GetInstance();
+	truth_record.set_event_tree_branches(outTree_low);
 
 
 	if (config_var.Type_of_running == "Standard")
@@ -111,6 +113,7 @@ void OutputRunAction::BeginOfRunAction(const G4Run *run)
 		track_list_low.set_tree_branches(outTree_low, config_var.low_resolution.kNLayers);
 		truth_record_graph.set_tree_branches(outTree_low);
 		final_state_particle.set_tree_branches(outTree_low);
+		truth_record.set_tree_branches(outTree_low);
 		topo_clusts.set_tree_branches(outTree_low);
 		if ( config_var.doPFlow ) {
 		    pflow_obj.set_tree_branches(outTree_low);

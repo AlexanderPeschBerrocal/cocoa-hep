@@ -1,14 +1,27 @@
 #include "Config_reader_func.hh"
 
 #include <iostream>
+#include <cstdlib>
 #include <fstream>
+#include <sstream>
 
 Config_reader_func::Config_reader_func(std::string path, Config_reader_var &config_var)
 {
     
     std::ifstream config_doc(path, std::ifstream::binary);
+    if (!config_doc)
+    {
+        std::cerr << "Cannot open configuration file " << path << std::endl;
+        std::exit(1);
+    }
+    std::stringstream config_text;
+    config_text << config_doc.rdbuf();
+    config_var.config_path = path;
+    config_var.config_json_text = config_text.str();
 
-    config_doc >> configs;
+    config_text.clear();
+    config_text.seekg(0);
+    config_text >> configs;
     
     config_var.Output_file_path = configs["Output_file_path"].asString();
 
@@ -71,6 +84,14 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     config_var.fiducial_cuts.e_min = configs["Fiducial_cuts"].get( "e_min_gev", 0.0 ).asFloat();
     config_var.fiducial_cuts.eta_max = configs["Fiducial_cuts"].get( "eta_max", 3.0 ).asFloat();
     config_var.fiducial_cuts.dR_cut = configs["Fiducial_cuts"].get( "dR_cut", -1.0 ).asFloat();
+
+    const Json::Value &truth_record = configs["Truth_record"];
+    Truth_record_var &truth = config_var.truth_record;
+    truth.record_secondary_conversions = truth_record.get( "Record_secondary_conversions", truth.record_secondary_conversions ).asBool();
+    truth.conversion_secondary_photon_e_min = truth_record.get( "Conversion_secondary_photon_e_min_mev", truth.conversion_secondary_photon_e_min ).asFloat();
+    truth.record_secondary_nuclear_interactions = truth_record.get( "Record_secondary_nuclear_interactions", truth.record_secondary_nuclear_interactions ).asBool();
+    truth.nuclear_secondary_hadron_ekin_min = truth_record.get( "Nuclear_secondary_hadron_ekin_min_mev", truth.nuclear_secondary_hadron_ekin_min ).asFloat();
+    truth.nuclear_daughter_ekin_min = truth_record.get( "Nuclear_daughter_ekin_min_mev", truth.nuclear_daughter_ekin_min ).asFloat();
 
     if (config_var.Type_of_running != "Standard")
     {

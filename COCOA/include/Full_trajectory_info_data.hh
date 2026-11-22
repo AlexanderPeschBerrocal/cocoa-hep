@@ -11,32 +11,40 @@
 
 
 struct FullTrajectoryInfo {
-	G4int fTrackID;
-	G4int fParentID;
-	G4int fPDGCode;
-	G4int fprocessId;
-	G4double fPDGCharge;
+	G4int fTrackID = -1;
+	G4int fParentID = -1;
+	G4int fPDGCode = 0;
+	G4int fGeneratorIdx = -1; // index in TruthRecordGraph::m_final_state_particles, -1 if none
+	G4double fPDGCharge = 0.0;
 	G4ThreeVector fMomentum;
 	G4ThreeVector fMomentumDir;
-	G4double    fEnergy ;
-    G4double    fMass ;
+	G4double    fEnergy = 0.0;
+	G4double    fMass = 0.0;
 	G4ThreeVector fVertexPosition;
+	G4double fGlobalTime = 0.0;
+
+	// State at the end of the track (filled for Geant4 primaries).
 	G4ThreeVector fEndPosition;
-	G4double fGlobalTime;
+	G4double fEndEnergy = 0.0;
+	G4ThreeVector fEndMomentum;
+	G4int fEndProcessType = -1;
+	G4int fEndProcessSubType = -1;
+	G4int fEndInTracker = 0;
+	G4int fEndMaterialIdx = -1;
+	G4int fEndVolumeIdx = -1;
 	G4double fTrackLength = 0.0;
-	G4int fTrackStatus = -1;
-	G4int fTerminationProcessType = -1;
-	G4int fTerminationProcessSubType = -1;
-	bool fConverted = false;
-        
-    float caloExtrapolMaxEkin;
-    float caloExtrapolEta;
-    float caloExtrapolPhi;
-    
-    float idExtrapolMaxEkin;
-    float idExtrapolEta;
-    float idExtrapolPhi;
-        
+	G4double fX0Tracker = 0.0;
+	G4double fLambdaTracker = 0.0;
+	G4int fNScattersTracker = 0;
+
+	float caloExtrapolMaxEkin = 0.f;
+	float caloExtrapolEta = 0.f;
+	float caloExtrapolPhi = 0.f;
+
+	float idExtrapolMaxEkin = 0.f;
+	float idExtrapolEta = 0.f;
+	float idExtrapolPhi = 0.f;
+
 	std::vector<G4int> vTrackID;
 	std::vector<G4int> vParentID;
 	std::vector<G4ThreeVector> vTrackMomentumDir;
@@ -44,7 +52,7 @@ struct FullTrajectoryInfo {
 	std::vector<G4double> vTrackTime;
 	std::vector<G4double> vTrackPDGID;
 
-    bool is_conversion_track;
+	bool is_conversion_track = false;
 
 	// fastjet::PseudoJet particle_object;
 };
@@ -62,9 +70,11 @@ void fill_var();
         static Full_trajectory_info_data trajectories;
         return trajectories;
     };
+    // Geant4 primaries, one entry per particle_* row.
     std::vector < FullTrajectoryInfo> fAllTrajectoryInfo;
+    // Conversion legs, one entry per conv_el_* row (see Truth_record_data).
+    // Used for the cell attribution (cell_conv_el_idx) and superclustering.
     std::vector < FullTrajectoryInfo> fAllConvElectrons;
-    std::vector < FullTrajectoryInfo> fAllNuclearInteractionDaughters;
 	std::vector <int>	particle_to_track;
 	std::vector <fastjet::PseudoJet> jets_objects;
     void SetParticleDepEnergy( const std::vector<float> &_particle_dep_energies);
@@ -81,43 +91,26 @@ private:
 	std::vector <float> particle_prod_z;
     std::vector<float>  particle_dep_energy;
 
-    // One entry per Geant4 primary photon. Energies are stored in MeV and
-    // positions/path lengths in mm, following the units used by the existing
-    // particle_* branches.
-    std::vector<int>   primary_photon_particle_idx;
-    std::vector<int>   primary_photon_track_id;
-    std::vector<float> primary_photon_energy;
-    std::vector<float> primary_photon_eta;
-    std::vector<float> primary_photon_phi;
-    std::vector<float> primary_photon_path_length;
-    std::vector<float> primary_photon_prod_x;
-    std::vector<float> primary_photon_prod_y;
-    std::vector<float> primary_photon_prod_z;
-    std::vector<float> primary_photon_end_x;
-    std::vector<float> primary_photon_end_y;
-    std::vector<float> primary_photon_end_z;
-    std::vector<int>   primary_photon_converted;
-    std::vector<int>   primary_photon_track_status;
-    std::vector<int>   primary_photon_termination_process_type;
-    std::vector<int>   primary_photon_termination_process_subtype;
-
-    std::vector<int>    conv_el_fPrimaryPhotonIndex;
-    std::vector<float>  conv_el_q;
-    std::vector<float>  conv_el_px;
-    std::vector<float>  conv_el_py;
-    std::vector<float>  conv_el_pz;
-    std::vector<float>  conv_el_prod_x;
-    std::vector<float>  conv_el_prod_y;
-    std::vector<float>  conv_el_prod_z;
-
-    std::vector<int>   nucl_int_fPrimaryParticleIndex;
-    std::vector<float> nucl_int_q;
-    std::vector<float> nucl_int_px;
-    std::vector<float> nucl_int_py;
-    std::vector<float> nucl_int_pz;
-    std::vector<float> nucl_int_prod_x;
-    std::vector<float> nucl_int_prod_y;
-    std::vector<float> nucl_int_prod_z;
+    // Schema version 2 additions, see docs/output_schema.md.
+    std::vector<float> particle_q;
+    std::vector<int>   particle_g4_track_id;
+    std::vector<int>   particle_truth_node_idx;
+    std::vector<float> particle_end_x;
+    std::vector<float> particle_end_y;
+    std::vector<float> particle_end_z;
+    std::vector<float> particle_end_e;
+    std::vector<float> particle_end_px;
+    std::vector<float> particle_end_py;
+    std::vector<float> particle_end_pz;
+    std::vector<int>   particle_end_process_type;
+    std::vector<int>   particle_end_process_subtype;
+    std::vector<int>   particle_end_in_tracker;
+    std::vector<int>   particle_end_material_idx;
+    std::vector<int>   particle_end_volume_idx;
+    std::vector<float> particle_track_length;
+    std::vector<float> particle_x0_tracker;
+    std::vector<float> particle_lambda_tracker;
+    std::vector<int>   particle_n_scatters_tracker;
 
     std::vector<float> caloExtrapolEta;     // pseudorapidity of the same-pdgid daughter track of maximum kinetic energy in the calorimeter
     std::vector<float> caloExtrapolPhi;     // phi of the same-pdgid daughter track of maximum kinetic energy in the calorimeter

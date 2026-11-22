@@ -43,19 +43,6 @@ public:
 	virtual void PreUserTrackingAction(const G4Track*);
 	virtual void PostUserTrackingAction(const G4Track *);
 
-private:
-    bool IsPrimaryPhotonDaughter(const G4Track* aTrack) const;
-    bool IsInnerDetectorTrack(const G4Track* aTrack) const;
-
-	bool IsVertexInTrackerRegion(const G4Track* aTrack) const;
-
-	bool IsConversionElectron(const G4Track* aTrack) const;
-	bool HasPrimaryPhotonParent(const G4Track* aTrack) const;
-
-	bool IsNuclearInteractionDaughter(const G4Track* aTrack) const;
-	bool HasPrimaryParticleParent(const G4Track* aTrack) const;
-
-	int FindPrimaryAncestorIndex(const G4Track* aTrack) const;
 };
 
 #endif

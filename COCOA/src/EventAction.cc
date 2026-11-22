@@ -45,6 +45,7 @@
 #include "Graph_construction_data.hh"
 #include "Jet_Builder_func.hh"
 #include "Jet_Builder_data.hh"
+#include "Truth_record_data.hh"
 
 #include <memory>
 
@@ -75,6 +76,9 @@ void EventAction::BeginOfEventAction(const G4Event *anEvent) //const G4Event* an
 	topo_jets_obj.clear();
 	pion_info.clear();
 	det_ana.clear();
+	Truth_record_data &truth = Truth_record_data::GetInstance();
+	truth.clear();
+	truth.SetEventInfo(anEvent->GetEventID(), Config_reader_var::GetInstance().run_seed);
 	// const G4Event* ev = anEvent;
 
 #ifdef DEBUG_HEPMC
@@ -89,7 +93,6 @@ void EventAction::BeginOfEventAction(const G4Event *anEvent) //const G4Event* an
 		primaryVertex->Print();
 	}
 #endif
-	(void)anEvent;
 }
 
 void EventAction::EndOfEventAction(const G4Event *evt)
@@ -164,6 +167,7 @@ void EventAction::EndOfEventAction(const G4Event *evt)
 			if ( config_var.doPFlow )
 			    pflow_obj.fill_cell_var();
 			trajectories.fill_var();
+			Truth_record_data::GetInstance().fill_var();
 
 			GraphConstructor graph_construct_high(cells_data_high.Cells_in_topoclusters, tracks_list_low.Tracks_list, trajectories.particle_to_track, graph_obj_high);
 
@@ -219,6 +223,7 @@ void EventAction::EndOfEventAction(const G4Event *evt)
 			if ( config_var.doPFlow )
 			    pflow_obj.fill_cell_var();
 			trajectories.fill_var();
+			Truth_record_data::GetInstance().fill_var();
 			if ( config_var.doSuperclustering )
 			{
 				Superclustering superclusters(tracks_list_low.Tracks_list, topo_clusts.topo_clusts_list, cells_data_low.Cells_in_topoclusters, superclustering_data.super_list);

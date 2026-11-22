@@ -28,6 +28,11 @@ public:
     void clear();
     void fill_truth_graph();
     void set_tree_branches(TTree *outTree);
+    // Converts node_final_state_idx from generator indices into particle_* row
+    // indices and returns, per particle_* row, its node row (-1 if none).
+    // particle_generator_idx holds the generator index of every particle_* row.
+    void link_to_particles(const std::vector<int> &particle_generator_idx,
+                           std::vector<int> &particle_node_idx);
 
     bool isCharmHadron(int pdgid);
     bool isBottomHadron(int pdgid);

@@ -57,6 +57,7 @@
 #include "Superclustering_data.hh"
 #include "TruthRecordGraph.hh"
 #include "Full_trajectory_info_data.hh"
+#include "Truth_record_data.hh"
 #include "Graph_construction_data.hh"
 #include "Debug_Particle_Flow_data.hh"
 #include "Jet_Builder_data.hh"

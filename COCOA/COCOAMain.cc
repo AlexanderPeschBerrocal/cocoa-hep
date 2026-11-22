@@ -205,6 +205,12 @@ int main(int argc, char **argv)
 	else
 		root_file_path = config_var.Output_file_path;
 
+	// Provenance for the RunInfo tree.
+	config_var.run_seed = seed;
+	config_var.n_events_requested = nEvents;
+	for (int i = 0; i < argc; ++i)
+		config_var.command_line += (i ? " " : "") + std::string(argv[i]);
+
 	//* choose the Random engine
 	CLHEP::HepRandom::setTheEngine(new CLHEP::RanecuEngine());
 	G4Random::setTheSeed(seed);
@@ -279,6 +285,7 @@ int main(int argc, char **argv)
 			}
 		}
 		
+		config_var.macro_path_used = macro_file_path;
 		visManager->SetVerboseLevel("quiet");
 		UImanager->ApplyCommand("/generator/pythia8/setSeed " + std::to_string(seed));
 		//UImanager->ApplyCommand(G4String("/control/execute ") + macro_file_path);

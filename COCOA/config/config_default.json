@@ -74,7 +74,7 @@
     "Truth_record":
     {
         "Record_secondary_conversions": true,
-        "Conversion_secondary_photon_e_min_mev": 100,
+        "Conversion_secondary_photon_e_min_mev": 500,
         "Record_secondary_nuclear_interactions": true,
         "Nuclear_secondary_hadron_ekin_min_mev": 300,
         "Nuclear_daughter_ekin_min_mev": 0

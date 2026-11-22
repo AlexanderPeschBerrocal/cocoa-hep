@@ -38,7 +38,7 @@ Then in the `COCOA` directory run the following commands:
 ```
 mkdir build
 cd build
-cmake ../
+cmake ..
 make -j<# cpu cores>
 cd ..
 ```
@@ -63,6 +63,7 @@ From within `COCOA` directory:
 ```
 ./build/COCOA --macro  /path/to/COCOA/COCOA/macro/Pythia8/ttbar.in --config  /path/to/COCOA/COCOA/config/config_doc.json  /path/to/outputdir/output_name.root --seed 5
 ```
+
 
 ## Convert
 To convert the output files from COCOA from ROOT to hdf5 format, the `util/dump_hdf5.py` can be used as follows:

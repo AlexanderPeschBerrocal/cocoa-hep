@@ -36,8 +36,11 @@
 
 #include "G4TrackingManager.hh"
 #include "G4Track.hh"
+#include "G4Step.hh"
+#include "G4StepPoint.hh"
 #include "G4Trajectory.hh"
 #include "G4RunManager.hh"
+#include "G4String.hh"
 // #include "DataStorage.hh"
 
 #include "SteppingAction.hh"
@@ -45,6 +48,22 @@
 #include "PrimaryGeneratorAction.hh"
 #include "DetectorConstruction.hh"
 using namespace std;
+
+#include "G4VProcess.hh"
+#include "G4ProcessType.hh"
+
+#include <algorithm>
+#include <string>
+
+#include "G4ParticleDefinition.hh"
+#include "G4ParticleTable.hh"
+
+#include "G4EmProcessSubType.hh"
+
+#include <cstdlib>
+
+#include "G4LogicalVolume.hh"
+#include "G4Region.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 TrackingAction::TrackingAction()
@@ -73,6 +92,7 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 		trjInfo.fMass = aTrack->GetDynamicParticle()->GetPrimaryParticle()->GetMass();
 
 		trjInfo.fVertexPosition = aTrack->GetVertexPosition();
+		trjInfo.fEndPosition = aTrack->GetPosition();
 		trjInfo.fGlobalTime = aTrack->GetGlobalTime();
 		
 		trjInfo.caloExtrapolMaxEkin = 0.0;
@@ -145,8 +165,9 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 			} //  if(foundTraj)
 		}
 	}	  //if(aTrack->GetParentID() != 0)
-	if ( IsPrimaryPhotonDaughter( aTrack ) &&
-	     IsInnerDetectorTrack( aTrack ) ) {
+	if ( IsConversionElectron( aTrack ) &&
+		 HasPrimaryPhotonParent( aTrack ) &&
+	     IsVertexInTrackerRegion( aTrack ) ) {
 
 	    FullTrajectoryInfo conv_el_tr;
 		conv_el_tr.is_conversion_track = true;
@@ -180,13 +201,82 @@ void TrackingAction::PreUserTrackingAction(const G4Track*aTrack)
 	    }
 
 	    trajectories.fAllConvElectrons.push_back( conv_el_tr );
-	    
+	}
+
+	if (IsNuclearInteractionDaughter(aTrack) && HasPrimaryParticleParent(aTrack) && IsVertexInTrackerRegion(aTrack)) {
+		FullTrajectoryInfo nucl_int_tr;
+
+		nucl_int_tr.is_conversion_track = false;
+		nucl_int_tr.fPDGCharge = aTrack->GetDynamicParticle()->GetCharge();
+		nucl_int_tr.fMomentumDir = aTrack->GetDynamicParticle()->GetMomentumDirection();
+		nucl_int_tr.fEnergy = aTrack->GetDynamicParticle()->GetTotalEnergy();
+		nucl_int_tr.fMass = aTrack->GetDynamicParticle()->GetMass();
+
+		nucl_int_tr.fTrackID = aTrack->GetTrackID();
+		nucl_int_tr.fPDGCode = aTrack->GetDefinition()->GetPDGEncoding();
+		nucl_int_tr.fMomentum = aTrack->GetMomentum();
+
+		nucl_int_tr.caloExtrapolMaxEkin = 0.0;
+		nucl_int_tr.caloExtrapolEta = nucl_int_tr.fMomentum.getEta();
+		nucl_int_tr.caloExtrapolPhi = GetPhi(nucl_int_tr.fMomentum.x(), nucl_int_tr.fMomentum.y());
+
+		nucl_int_tr.idExtrapolMaxEkin = nucl_int_tr.caloExtrapolMaxEkin;
+		nucl_int_tr.idExtrapolEta = nucl_int_tr.caloExtrapolEta;
+		nucl_int_tr.idExtrapolPhi = nucl_int_tr.caloExtrapolPhi;
+
+		nucl_int_tr.fVertexPosition = aTrack->GetVertexPosition();
+		nucl_int_tr.fGlobalTime = aTrack->GetGlobalTime();
+
+		nucl_int_tr.vTrackMomentumDir.push_back(aTrack->GetMomentum());
+		nucl_int_tr.vParentID.push_back(aTrack->GetParentID());
+		nucl_int_tr.vTrackID.push_back(aTrack->GetTrackID());
+		nucl_int_tr.vTrackPos.push_back(aTrack->GetPosition());
+		nucl_int_tr.vTrackTime.push_back(aTrack->GetGlobalTime());
+		nucl_int_tr.vTrackPDGID.push_back(aTrack->GetDefinition()->GetPDGEncoding());
+
+		nucl_int_tr.fParentID = FindPrimaryAncestorIndex(aTrack);
+
+		trajectories.fAllNuclearInteractionDaughters.push_back(nucl_int_tr);
 	}
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-void TrackingAction::PostUserTrackingAction(const G4Track*)
-{}
+void TrackingAction::PostUserTrackingAction(const G4Track* aTrack)
+{
+	if (!aTrack || aTrack->GetParentID() != 0 ||
+		aTrack->GetDefinition()->GetPDGEncoding() != 22)
+		return;
+
+	auto& primaryParticles =
+		Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo;
+	for (FullTrajectoryInfo& primaryParticle : primaryParticles) {
+		if (primaryParticle.fTrackID != aTrack->GetTrackID() ||
+			primaryParticle.fPDGCode != 22 ||
+			primaryParticle.is_conversion_track)
+			continue;
+
+		primaryParticle.fTrackLength = aTrack->GetTrackLength();
+		primaryParticle.fEndPosition = aTrack->GetPosition();
+		primaryParticle.fTrackStatus = static_cast<G4int>(aTrack->GetTrackStatus());
+
+		const G4Step* finalStep = aTrack->GetStep();
+		const G4VProcess* terminatingProcess = nullptr;
+		if (finalStep && finalStep->GetPostStepPoint())
+			terminatingProcess =
+				finalStep->GetPostStepPoint()->GetProcessDefinedStep();
+
+		if (terminatingProcess) {
+			primaryParticle.fTerminationProcessType =
+				static_cast<G4int>(terminatingProcess->GetProcessType());
+			primaryParticle.fTerminationProcessSubType =
+				terminatingProcess->GetProcessSubType();
+			primaryParticle.fConverted =
+				terminatingProcess->GetProcessType() == fElectromagnetic &&
+				terminatingProcess->GetProcessSubType() == fGammaConversion;
+		}
+		break;
+	}
+}
 
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -211,10 +301,140 @@ bool TrackingAction::IsPrimaryPhotonDaughter(const G4Track* aTrack) const {
 bool TrackingAction::IsInnerDetectorTrack(const G4Track* aTrack) const {
 
     G4String logicalVolumeName = aTrack->GetVolume()->GetName();
-    logicalVolumeName.toLower();
+    G4StrUtil::to_lower(logicalVolumeName);
     
-    return logicalVolumeName( 0, 5 ) == "inner";
+    return logicalVolumeName.substr( 0, 5 ) == "inner";
     
+}
+
+bool TrackingAction::IsVertexInTrackerRegion(
+    const G4Track* aTrack) const
+{
+    if (!aTrack)
+        return false;
+
+    const G4LogicalVolume* vertexVolume =
+        aTrack->GetLogicalVolumeAtVertex();
+
+    if (!vertexVolume)
+        return false;
+
+    const G4Region* region = vertexVolume->GetRegion();
+
+    return region && region->GetName() == "TrackerRegion";
+}
+
+bool TrackingAction::IsConversionElectron(const G4Track* aTrack) const
+{
+    if (!aTrack || !aTrack->GetDefinition())
+        return false;
+
+    // Conventionally includes both the electron and positron.
+    if (std::abs(aTrack->GetDefinition()->GetPDGEncoding()) != 11)
+        return false;
+
+    const G4VProcess* creator = aTrack->GetCreatorProcess();
+
+    if (!creator)
+        return false;
+
+    return creator->GetProcessType() == fElectromagnetic &&
+           creator->GetProcessSubType() == fGammaConversion;
+}
+
+bool TrackingAction::HasPrimaryPhotonParent(const G4Track* aTrack) const
+{
+    if (!aTrack || aTrack->GetParentID() == 0)
+        return false;
+
+    const G4int parentID = aTrack->GetParentID();
+    const auto& primaryParticles =
+        Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo;
+
+    for (const FullTrajectoryInfo& primaryParticle : primaryParticles) {
+        if (primaryParticle.fTrackID == parentID &&
+            primaryParticle.fPDGCode == 22) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool TrackingAction::IsNuclearInteractionDaughter(const G4Track* aTrack) const {
+    if (!aTrack) return false;
+
+    const G4VProcess* creator = aTrack->GetCreatorProcess();
+    if (!creator) return false;
+
+    const G4String& processName = creator->GetProcessName();
+
+    // Require a Geant4 hadronic/nuclear creation process.
+    // This rejects decays and ordinary EM processes.
+    if (creator->GetProcessType() != fHadronic) return false;
+
+    // Strict inelastic/capture definition.
+    // This accepts typical names such as pi+Inelastic, pi-Inelastic,
+    // kaon+Inelastic, protonInelastic, neutronInelastic, nCapture, nFission.
+    const bool isNuclearProcess =
+        processName.find("Inelastic") != std::string::npos ||
+        processName == "nCapture" ||
+        processName == "nFission";
+
+    return isNuclearProcess;
+}
+
+bool TrackingAction::HasPrimaryParticleParent(const G4Track* aTrack) const
+{
+    if (!aTrack || aTrack->GetParentID() == 0)
+        return false;
+
+    const G4int parentID = aTrack->GetParentID();
+    const auto& primaries = Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo;
+
+    for (const FullTrajectoryInfo& primary : primaries)
+    {
+        // A direct match means the incident parent itself was primary.
+        if (primary.fTrackID != parentID)
+            continue;
+
+        const G4ParticleDefinition* definition =
+            G4ParticleTable::GetParticleTable()->FindParticle(primary.fPDGCode);
+
+        if (!definition)
+            return false;
+
+        const G4String& type = definition->GetParticleType();
+
+        return type == "baryon" ||
+               type == "meson"  ||
+               type == "nucleus";
+    }
+
+    return false;
+}
+
+int TrackingAction::FindPrimaryAncestorIndex(const G4Track* aTrack) const {
+    if (!aTrack) return -1;
+
+    const G4int parentID = aTrack->GetParentID();
+    const auto& primaries = Full_trajectory_info_data::GetInstance().fAllTrajectoryInfo;
+
+    for (size_t ip = 0; ip < primaries.size(); ++ip) {
+        const FullTrajectoryInfo& primary = primaries[ip];
+
+        if (primary.fTrackID == parentID) {
+            return static_cast<int>(ip);
+        }
+
+        if (std::find(primary.vTrackID.begin(),
+                      primary.vTrackID.end(),
+                      parentID) != primary.vTrackID.end()) {
+            return static_cast<int>(ip);
+        }
+    }
+
+    return -1;
 }
 
 #endif // __H02TRACKINGACTION_H__

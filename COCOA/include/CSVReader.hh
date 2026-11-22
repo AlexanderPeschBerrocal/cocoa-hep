@@ -1,8 +1,7 @@
 #ifndef __CSVREADER_H__
 #define __CSVREADER_H__
 
-
-#include "G4UIGAG.hh"
+#include <string>
 #include "vector"
 #include "TH1.h"
 #include "TH2.h"

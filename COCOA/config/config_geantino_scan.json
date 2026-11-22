@@ -1,5 +1,11 @@
 // Configuration for COCOA example
 {
+    "Save_geometry_json": true,
+    "Geometry_json_path": "",
+
+    "Save_geometry_gdml": true,
+    "Geometry_gdml_path": "",
+    
     "Output_file_path":"./Geantino.root",
     "Macro_file_path":"./macro/Geant4Gun/geantino_scan.in",
     "Type_of_running": "Detector_Geantino",
@@ -9,6 +15,7 @@
     {
         "Check_Geometry_overlap": false,
 	"Use_inner_detector":true,
+	"Use_detailed_tracker_material":true,
         "Max_eta_of_barrel_region": 1.5,
         "Max_eta_of_endcap_region": 3.0,
         "Inner_calorimeter_layer" :1500,

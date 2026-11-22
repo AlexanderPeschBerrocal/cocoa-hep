@@ -1,6 +1,8 @@
 #include "TruthRecordGraph.hh"
 #include "OutputRunAction.hh"
 
+#include <limits>
+
 void TruthRecordGraph::clear()
 {
 	m_interesting_particles.clear();
@@ -320,6 +322,41 @@ void TruthRecordGraph::fill_truth_graph()
 			node_m.push_back(particle->momentum().m());
 			node_isfinal.push_back(particle->status());
 			final_idx.push_back(node_final_state_idx);
+
+			const float missing_position =
+				std::numeric_limits<float>::quiet_NaN();
+
+			const HepMC::GenVertex *production_vertex =
+				particle->production_vertex();
+			if (production_vertex)
+			{
+				const HepMC::FourVector &position =
+					production_vertex->position();
+				node_prodx.push_back(position.x());
+				node_prody.push_back(position.y());
+				node_prodz.push_back(position.z());
+			}
+			else
+			{
+				node_prodx.push_back(missing_position);
+				node_prody.push_back(missing_position);
+				node_prodz.push_back(missing_position);
+			}
+
+			const HepMC::GenVertex *decay_vertex = particle->end_vertex();
+			if (decay_vertex)
+			{
+				const HepMC::FourVector &position = decay_vertex->position();
+				node_decx.push_back(position.x());
+				node_decy.push_back(position.y());
+				node_decz.push_back(position.z());
+			}
+			else
+			{
+				node_decx.push_back(missing_position);
+				node_decy.push_back(missing_position);
+				node_decz.push_back(missing_position);
+			}
 		}
 	}
 }

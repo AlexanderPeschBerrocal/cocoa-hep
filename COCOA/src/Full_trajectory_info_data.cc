@@ -83,6 +83,28 @@ void Full_trajectory_info_data::fill_var(){
         particle_prod_x.push_back(fAllTrajectoryInfo.at(iparticle).fVertexPosition.x());
         particle_prod_y.push_back(fAllTrajectoryInfo.at(iparticle).fVertexPosition.y());
         particle_prod_z.push_back(fAllTrajectoryInfo.at(iparticle).fVertexPosition.z());
+
+		const FullTrajectoryInfo& trajectory = fAllTrajectoryInfo.at(iparticle);
+		if (trajectory.fPDGCode == 22 && !trajectory.is_conversion_track) {
+			primary_photon_particle_idx.push_back(iparticle);
+			primary_photon_track_id.push_back(trajectory.fTrackID);
+			primary_photon_energy.push_back(trajectory.fEnergy);
+			primary_photon_eta.push_back(eta);
+			primary_photon_phi.push_back(phi);
+			primary_photon_path_length.push_back(trajectory.fTrackLength);
+			primary_photon_prod_x.push_back(trajectory.fVertexPosition.x());
+			primary_photon_prod_y.push_back(trajectory.fVertexPosition.y());
+			primary_photon_prod_z.push_back(trajectory.fVertexPosition.z());
+			primary_photon_end_x.push_back(trajectory.fEndPosition.x());
+			primary_photon_end_y.push_back(trajectory.fEndPosition.y());
+			primary_photon_end_z.push_back(trajectory.fEndPosition.z());
+			primary_photon_converted.push_back(trajectory.fConverted ? 1 : 0);
+			primary_photon_track_status.push_back(trajectory.fTrackStatus);
+			primary_photon_termination_process_type.push_back(
+				trajectory.fTerminationProcessType);
+			primary_photon_termination_process_subtype.push_back(
+				trajectory.fTerminationProcessSubType);
+		}
 	
         caloExtrapolEta.push_back(fAllTrajectoryInfo.at(iparticle).caloExtrapolEta);
         caloExtrapolPhi.push_back(fAllTrajectoryInfo.at(iparticle).caloExtrapolPhi);
@@ -112,6 +134,17 @@ void Full_trajectory_info_data::fill_var(){
         conv_el_prod_z.push_back( conv_el_tr.fVertexPosition.z() );
     }
     
+    for (const FullTrajectoryInfo& nucl_int_tr : fAllNuclearInteractionDaughters) {
+        nucl_int_fPrimaryParticleIndex.push_back(nucl_int_tr.fParentID);
+        nucl_int_q.push_back(nucl_int_tr.fPDGCharge);
+        nucl_int_px.push_back(nucl_int_tr.fMomentum.x());
+        nucl_int_py.push_back(nucl_int_tr.fMomentum.y());
+        nucl_int_pz.push_back(nucl_int_tr.fMomentum.z());
+        nucl_int_prod_x.push_back(nucl_int_tr.fVertexPosition.x());
+        nucl_int_prod_y.push_back(nucl_int_tr.fVertexPosition.y());
+        nucl_int_prod_z.push_back(nucl_int_tr.fVertexPosition.z());
+    }
+    
 }
 
 
@@ -120,6 +153,7 @@ void Full_trajectory_info_data::clear()
 {
     fAllTrajectoryInfo.clear();
     fAllConvElectrons.clear();
+    fAllNuclearInteractionDaughters.clear();
     particle_pdgid.clear();
     particleisIso.clear();
     particle_pt.clear();
@@ -129,6 +163,22 @@ void Full_trajectory_info_data::clear()
     particle_prod_x.clear();
     particle_prod_y.clear();
     particle_prod_z.clear();
+    primary_photon_particle_idx.clear();
+    primary_photon_track_id.clear();
+    primary_photon_energy.clear();
+    primary_photon_eta.clear();
+    primary_photon_phi.clear();
+    primary_photon_path_length.clear();
+    primary_photon_prod_x.clear();
+    primary_photon_prod_y.clear();
+    primary_photon_prod_z.clear();
+    primary_photon_end_x.clear();
+    primary_photon_end_y.clear();
+    primary_photon_end_z.clear();
+    primary_photon_converted.clear();
+    primary_photon_track_status.clear();
+    primary_photon_termination_process_type.clear();
+    primary_photon_termination_process_subtype.clear();
     conv_el_fPrimaryPhotonIndex.clear();
     conv_el_q.clear();
     conv_el_px.clear();
@@ -137,6 +187,14 @@ void Full_trajectory_info_data::clear()
     conv_el_prod_x.clear();
     conv_el_prod_y.clear();
     conv_el_prod_z.clear();
+    nucl_int_fPrimaryParticleIndex.clear();
+    nucl_int_q.clear();
+    nucl_int_px.clear();
+    nucl_int_py.clear();
+    nucl_int_pz.clear();
+    nucl_int_prod_x.clear();
+    nucl_int_prod_y.clear();
+    nucl_int_prod_z.clear();
     caloExtrapolEta.clear();
     caloExtrapolPhi.clear();
     idExtrapolEta.clear();
@@ -164,6 +222,23 @@ void Full_trajectory_info_data::set_tree_branches(TTree *outTree)
     outTree->Branch("particle_phi_extrap_its",     "vector<float>", &idExtrapolPhi);
     outTree->Branch("particle_dep_energy"  ,       "vector<float>", &particle_dep_energy);
 
+    outTree->Branch("primary_photon_particle_idx", "vector<int>", &primary_photon_particle_idx);
+    outTree->Branch("primary_photon_track_id", "vector<int>", &primary_photon_track_id);
+    outTree->Branch("primary_photon_energy", "vector<float>", &primary_photon_energy);
+    outTree->Branch("primary_photon_eta", "vector<float>", &primary_photon_eta);
+    outTree->Branch("primary_photon_phi", "vector<float>", &primary_photon_phi);
+    outTree->Branch("primary_photon_path_length", "vector<float>", &primary_photon_path_length);
+    outTree->Branch("primary_photon_prod_x", "vector<float>", &primary_photon_prod_x);
+    outTree->Branch("primary_photon_prod_y", "vector<float>", &primary_photon_prod_y);
+    outTree->Branch("primary_photon_prod_z", "vector<float>", &primary_photon_prod_z);
+    outTree->Branch("primary_photon_end_x", "vector<float>", &primary_photon_end_x);
+    outTree->Branch("primary_photon_end_y", "vector<float>", &primary_photon_end_y);
+    outTree->Branch("primary_photon_end_z", "vector<float>", &primary_photon_end_z);
+    outTree->Branch("primary_photon_converted", "vector<int>", &primary_photon_converted);
+    outTree->Branch("primary_photon_track_status", "vector<int>", &primary_photon_track_status);
+    outTree->Branch("primary_photon_termination_process_type", "vector<int>", &primary_photon_termination_process_type);
+    outTree->Branch("primary_photon_termination_process_subtype", "vector<int>", &primary_photon_termination_process_subtype);
+
     outTree->Branch("conv_el_primary_photon_idx",  "vector<int>",   &conv_el_fPrimaryPhotonIndex);
     outTree->Branch("conv_el_q",                   "vector<float>", &conv_el_q);
     outTree->Branch("conv_el_px",                  "vector<float>", &conv_el_px);
@@ -172,6 +247,14 @@ void Full_trajectory_info_data::set_tree_branches(TTree *outTree)
     outTree->Branch("conv_el_prod_x",              "vector<float>", &conv_el_prod_x);
     outTree->Branch("conv_el_prod_y",              "vector<float>", &conv_el_prod_y);
     outTree->Branch("conv_el_prod_z",              "vector<float>", &conv_el_prod_z);
+    outTree->Branch("nucl_int_primary_particle_idx",   "vector<int>",   &nucl_int_fPrimaryParticleIndex);
+    outTree->Branch("nucl_int_q",                  "vector<float>", &nucl_int_q);
+    outTree->Branch("nucl_int_px",                 "vector<float>", &nucl_int_px);
+    outTree->Branch("nucl_int_py",                 "vector<float>", &nucl_int_py);
+    outTree->Branch("nucl_int_pz",                 "vector<float>", &nucl_int_pz);
+    outTree->Branch("nucl_int_prod_x",              "vector<float>", &nucl_int_prod_x);
+    outTree->Branch("nucl_int_prod_y",              "vector<float>", &nucl_int_prod_y);
+    outTree->Branch("nucl_int_prod_z",              "vector<float>", &nucl_int_prod_z);
 }
 
 void Full_trajectory_info_data::SetParticleDepEnergy( const std::vector<float> &_particle_dep_energies) {
@@ -179,4 +262,3 @@ void Full_trajectory_info_data::SetParticleDepEnergy( const std::vector<float> &
     particle_dep_energy = _particle_dep_energies;
     
 }
-

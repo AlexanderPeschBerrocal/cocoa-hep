@@ -1,5 +1,12 @@
 {
     "Output_file_path":"./cocoa_output_default.root",
+
+    "Save_geometry_json": false,
+    "Geometry_json_path": "",
+
+    "Save_geometry_gdml": false,
+    "Geometry_gdml_path": "",
+
     "Macro_file_path":"macro/Pythia8/ttbar.in",
     "Type_of_running": "Standard",
     "Save_truth_particle_graph": true,
@@ -9,6 +16,7 @@
         "Check_Geometry_overlap": false,
 	"Use_inner_detector":true,
 	"Use_ID_support":true,
+	"Use_detailed_tracker_material":false,
         "Max_eta_of_barrel_region": 1.5,
         "Max_eta_of_endcap_region": 3.0,
         "Inner_calorimeter_layer" :1500,

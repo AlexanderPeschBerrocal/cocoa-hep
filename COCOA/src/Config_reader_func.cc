@@ -11,6 +11,13 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
     config_doc >> configs;
     
     config_var.Output_file_path = configs["Output_file_path"].asString();
+
+    config_var.Save_geometry_json = configs.get("Save_geometry_json", false).asBool();
+    config_var.Geometry_json_path = configs.get("Geometry_json_path", "").asString();
+
+    config_var.Save_geometry_gdml = configs.get("Save_geometry_gdml", false).asBool();
+    config_var.Geometry_gdml_path = configs.get("Geometry_gdml_path", "").asString();
+
     config_var.Type_of_running = configs["Type_of_running"].asString();
     config_var.Macro_file_path = configs["Macro_file_path"].asString();
     config_var.Save_truth_particle_graph = configs["Save_truth_particle_graph"].asBool();
@@ -30,6 +37,7 @@ Config_reader_func::Config_reader_func(std::string path, Config_reader_var &conf
 	config_var.check_geometry_overlap = true;
     config_var.use_inner_detector = configs["Geometry_definition"].get( "Use_inner_detector", true ).asBool();
     config_var.use_ID_support = configs["Geometry_definition"].get( "Use_ID_support", true ).asBool();
+    config_var.use_detailed_tracker_material = configs["Geometry_definition"].get( "Use_detailed_tracker_material", false ).asBool();
 
     Json::Value &layervals = configs["Graph_construction"]["max_samelayer_edges"];
     Fill_1D_vector(layervals, config_var.graph_construction.max_samelayer_edges);

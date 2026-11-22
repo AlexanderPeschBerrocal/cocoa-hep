@@ -21,7 +21,13 @@ struct FullTrajectoryInfo {
 	G4double    fEnergy ;
     G4double    fMass ;
 	G4ThreeVector fVertexPosition;
+	G4ThreeVector fEndPosition;
 	G4double fGlobalTime;
+	G4double fTrackLength = 0.0;
+	G4int fTrackStatus = -1;
+	G4int fTerminationProcessType = -1;
+	G4int fTerminationProcessSubType = -1;
+	bool fConverted = false;
         
     float caloExtrapolMaxEkin;
     float caloExtrapolEta;
@@ -58,13 +64,14 @@ void fill_var();
     };
     std::vector < FullTrajectoryInfo> fAllTrajectoryInfo;
     std::vector < FullTrajectoryInfo> fAllConvElectrons;
+    std::vector < FullTrajectoryInfo> fAllNuclearInteractionDaughters;
 	std::vector <int>	particle_to_track;
 	std::vector <fastjet::PseudoJet> jets_objects;
     void SetParticleDepEnergy( const std::vector<float> &_particle_dep_energies);
     int  DeltaR_iso(float px, float py, float pz ,size_t idx_m,int particle_loop_pdgid);
 private:
 	std::vector <int>	particle_pdgid;
-        std::vector <int>   particleisIso;
+    std::vector <int>   particleisIso;
 	std::vector <float> particle_pt;
 	std::vector <float> particle_eta;
 	std::vector <float> particle_phi;
@@ -74,6 +81,26 @@ private:
 	std::vector <float> particle_prod_z;
     std::vector<float>  particle_dep_energy;
 
+    // One entry per Geant4 primary photon. Energies are stored in MeV and
+    // positions/path lengths in mm, following the units used by the existing
+    // particle_* branches.
+    std::vector<int>   primary_photon_particle_idx;
+    std::vector<int>   primary_photon_track_id;
+    std::vector<float> primary_photon_energy;
+    std::vector<float> primary_photon_eta;
+    std::vector<float> primary_photon_phi;
+    std::vector<float> primary_photon_path_length;
+    std::vector<float> primary_photon_prod_x;
+    std::vector<float> primary_photon_prod_y;
+    std::vector<float> primary_photon_prod_z;
+    std::vector<float> primary_photon_end_x;
+    std::vector<float> primary_photon_end_y;
+    std::vector<float> primary_photon_end_z;
+    std::vector<int>   primary_photon_converted;
+    std::vector<int>   primary_photon_track_status;
+    std::vector<int>   primary_photon_termination_process_type;
+    std::vector<int>   primary_photon_termination_process_subtype;
+
     std::vector<int>    conv_el_fPrimaryPhotonIndex;
     std::vector<float>  conv_el_q;
     std::vector<float>  conv_el_px;
@@ -82,7 +109,16 @@ private:
     std::vector<float>  conv_el_prod_x;
     std::vector<float>  conv_el_prod_y;
     std::vector<float>  conv_el_prod_z;
-    
+
+    std::vector<int>   nucl_int_fPrimaryParticleIndex;
+    std::vector<float> nucl_int_q;
+    std::vector<float> nucl_int_px;
+    std::vector<float> nucl_int_py;
+    std::vector<float> nucl_int_pz;
+    std::vector<float> nucl_int_prod_x;
+    std::vector<float> nucl_int_prod_y;
+    std::vector<float> nucl_int_prod_z;
+
     std::vector<float> caloExtrapolEta;     // pseudorapidity of the same-pdgid daughter track of maximum kinetic energy in the calorimeter
     std::vector<float> caloExtrapolPhi;     // phi of the same-pdgid daughter track of maximum kinetic energy in the calorimeter
     std::vector<float> idExtrapolEta;     // pseudorapidity of the same-pdgid daughter track of maximum kinetic energy in the outermost id layer

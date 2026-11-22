@@ -54,7 +54,7 @@ independent of any other configuration option.
 | `particle_g4_track_id` | int | Geant4 track ID (information only). |
 | `particle_pt`, `particle_eta`, `particle_phi`, `particle_e` | float | Generator momentum at production: pT, η, φ, total energy. |
 | `particle_prod_x`, `_y`, `_z` | float | Production vertex. |
-| `particle_isIso` | int | 1 if isolated (ΔR < 0.4 scalar-pT sum / pT < 0.06). |
+| `particle_isIso` | int | 1 if the scalar pT sum of other charged primaries within ΔR < min(10 GeV / pT, 0.2) is below 6 % of the particle's pT; 0 for neutral particles. |
 | `particle_truth_node_idx` | int | Row in `node_*` of this particle; -1 without truth graph. |
 | `particle_track_idx` | int | Row in `track_*` of the emulated track; -1 if none. |
 | `particle_eta_extrap_calo`, `particle_phi_extrap_calo` | float | η, φ of the highest-energy same-PDG descendant step in the calorimeter. |
@@ -89,8 +89,15 @@ inside the tracker region and whose photon is either
 
 ## `conv_el_*`: conversion legs
 
-One row per e⁺ or e⁻ created by a conversion recorded in `conv_vtx_*`. The
-calorimeter cell branch `cell_conv_el_idx` points into this table.
+One row per e⁺ or e⁻ created by a conversion recorded in `conv_vtx_*`.
+
+The calorimeter cell branch `cell_conv_el_idx` points into this table. Energy
+deposited by a particle is attributed to the *nearest* recorded conversion leg
+among its ancestors, and `cell_conv_el_idx` is the leg with the largest
+attributed energy in the cell. A shower started by a primary-photon leg is
+therefore split between that leg and the legs of recorded secondary conversions
+inside it. To attribute a cell to the primary photon, use
+`conv_vtx_in_ancestor_idx[conv_el_vtx_idx[cell_conv_el_idx]]`.
 
 Columns: see [Outgoing-particle columns](#outgoing-particle-columns), with prefix `conv_el_`.
 
@@ -112,6 +119,11 @@ nucleus) inside the tracker region, where the hadron is either
 | `nucl_vtx_material_idx`, `nucl_vtx_volume_idx` | int | Material and logical volume at the interaction point. |
 | `nucl_vtx_n_dau_total` | int | Number of secondaries produced by the interaction, before any storage threshold. |
 | `nucl_vtx_n_dau_charged` | int | Number of charged secondaries among them. |
+
+A hadron can survive an inelastic interaction in Geant4 and continue as the same
+track. Every interaction inside the tracker region is a separate row, whereas
+`particle_end_*` describes only where the track finally ended, which may be
+outside the tracker region.
 
 ## `nucl_dau_*`: nuclear-interaction daughters
 
@@ -163,7 +175,7 @@ of interest (final-state particles and their relevant ancestors).
 
 | Branch | Type | Description |
 |---|---|---|
-| `node_idx` | int | Index of the node in the internal list of interesting particles. |
+| `node_idx` | int | Position of the node in the internal list of interesting particles (not a link). |
 | `node_pdg_id` | int | PDG ID. |
 | `node_pt`, `node_eta`, `node_phi`, `node_m` | float | Generator kinematics (MeV). η is NaN for particles along the beam axis. |
 | `node_isfinal` | int | Generator status code. |
@@ -316,3 +328,17 @@ Mapping of the former photon branches:
 | `converted` | `particle_end_process_type == 2 && particle_end_process_subtype == 14` |
 | `termination_process_type`, `_subtype` | `particle_end_process_type`, `_subtype` |
 | `track_status` | dropped (always 2, "stop and kill", at the end of a track) |
+
+## Validation tools
+
+- `util/validate_output.py FILE.root` checks a file against this document:
+  table lengths, every link, the run-level trees, and physics consistency of
+  the truth record (e.g. e⁺ + e⁻ energy equals the photon energy at the
+  conversion, the conversion point of a primary photon equals its
+  `particle_end_*`, calorimeter-face points lie on the tracker-region boundary).
+- `util/compare_outputs.py REFERENCE.root CANDIDATE.root` compares two files made
+  with the same configuration and seed, branch by branch. Against a schema-1
+  reference it also checks the former `primary_photon_*` and `conv_el_*` branches
+  against their schema-2 replacements. Expected differences between schema 1 and
+  2 for the same seed: `conv_el_*` (additional legs of secondary photons) and
+  `cell_conv_el_idx` (see `conv_el_*`); pass them with `--ignore`.

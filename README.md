@@ -64,6 +64,10 @@ From within `COCOA` directory:
 ./build/COCOA --macro  /path/to/COCOA/COCOA/macro/Pythia8/ttbar.in --config  /path/to/COCOA/COCOA/config/config_doc.json  /path/to/outputdir/output_name.root --seed 5
 ```
 
+**Output:** the content of the output ROOT file (truth record, run metadata,
+units and index conventions) is described in [COCOA/docs/output_schema.md](COCOA/docs/output_schema.md).
+`COCOA/util/validate_output.py` checks a file against it.
+
 
 ## Convert
 To convert the output files from COCOA from ROOT to hdf5 format, the `util/dump_hdf5.py` can be used as follows:

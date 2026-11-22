@@ -41,6 +41,8 @@
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 
+#include <map>
+#include <set>
 #include <vector>
 
 
@@ -76,6 +78,14 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 {
 	float eta_primary=-100;
 	float phi_primary=-100;
+
+	// Generator particles already passed to Geant4 in this event. A particle can
+	// be reached from several vertices when check_prod_location() replaces
+	// children produced beyond the calorimeter radius by their parent.
+	std::set<const HepMC::GenParticle *> injected;
+	// Replacement parents, grouped by their own production vertex. Keyed by the
+	// vertex barcode so that the order of primaries is reproducible.
+	std::map<int, std::pair<const HepMC::GenVertex *, std::vector<HepMC::GenParticle *>>> relocated;
 
 	//* loop for vertex
 	for (HepMC::GenEvent::vertex_const_iterator vitr = hepmcevt->vertices_begin();
@@ -152,12 +162,17 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 
 			// if the particle decayed "too far" into the detector, replace it with its parent. otherwise this function just returns the original particle.
 			HepMC::GenParticle *pptr = m_truthrecordgraph.check_prod_location(*vpitr);
+			if (!pptr)
+			{
+				G4cout << "HepMCG4Interface: no ancestor of particle " << (*vpitr)->barcode()
+				       << " is produced inside the calorimeter radius; particle skipped." << G4endl;
+				continue;
+			}
 
 			m_truthrecordgraph.add_to_vector(pptr, m_truthrecordgraph.m_interesting_particles);
 
 			m_truthrecordgraph.add_all_moving_parents(pptr, m_truthrecordgraph.m_interesting_particles);
 
-			pos = (pptr)->production_vertex()->position();
 			G4int pdgcode = (pptr)->pdg_id();
 			// skip neutrinos
 			if (abs(pdgcode) == 12 || abs(pdgcode) == 14 || abs(pdgcode) == 16)
@@ -165,8 +180,20 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 				continue;
 			}
 
-			//add to selected particles (selected to be passed to GEANT), avoid duplicates.
-			m_truthrecordgraph.add_to_vector(pptr, selected_particles);
+			// Pass each generator particle to Geant4 only once per event.
+			if (!injected.insert(pptr).second)
+				continue;
+
+			if (pptr == *vpitr)
+				selected_particles.push_back(pptr);
+			else
+				// A replacement parent starts at its own production vertex, not at
+				// the vertex where it decayed.
+			{
+				auto &entry = relocated[pptr->production_vertex()->barcode()];
+				entry.first = pptr->production_vertex();
+				entry.second.push_back(pptr);
+			}
 		}
 
 		for (size_t particle_i = 0; particle_i < selected_particles.size(); particle_i++)
@@ -183,6 +210,24 @@ void HepMCG4Interface::HepMC2G4(const HepMC::GenEvent *hepmcevt,
 
 		g4event->AddPrimaryVertex(g4vtx);
 	}
+
+	for (const auto &barcode_and_entry : relocated)
+	{
+		const auto &vertex_and_particles = barcode_and_entry.second;
+		const HepMC::FourVector vpos = vertex_and_particles.first->position();
+		const G4ThreeVector position(vpos.x() * mm, vpos.y() * mm, vpos.z() * mm);
+		if (!CheckVertexInsideWorld(position))
+			continue;
+		G4PrimaryVertex *g4vtx = new G4PrimaryVertex(position, vpos.t() * mm / c_light);
+		for (HepMC::GenParticle *pptr : vertex_and_particles.second)
+		{
+			const HepMC::FourVector mom = pptr->momentum();
+			g4vtx->SetPrimary(new G4PrimaryParticle(pptr->pdg_id(), mom.px() * MeV, mom.py() * MeV, mom.pz() * MeV));
+			m_truthrecordgraph.m_final_state_particles.push_back(pptr);
+		}
+		g4event->AddPrimaryVertex(g4vtx);
+	}
+
 	m_truthrecordgraph.fill_truth_graph();
 }
 
